@@ -1,0 +1,2 @@
+D:/Praveen/Ideal_flutter/FaceAttribute-Flutter/android/app/.cxx/RelWithDebInfo/4w4k2r1i/armeabi-v7a/CMakeFiles/edit_cache.dir
+D:/Praveen/Ideal_flutter/FaceAttribute-Flutter/android/app/.cxx/RelWithDebInfo/4w4k2r1i/armeabi-v7a/CMakeFiles/rebuild_cache.dir

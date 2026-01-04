@@ -161,16 +161,56 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
   }
 
   Future<void> registerFace(BuildContext context) async {
-    num randomNumber =
-        10000 + Random().nextInt(10000); // from 0 upto 99 included
-    Person person = Person(
-        name: 'Person' + randomNumber.toString(),
-        faceJpg: _capturedFace['faceJpg'],
-        templates: _capturedFace['templates']);
+    TextEditingController nameController = TextEditingController();
+    TextEditingController designationController = TextEditingController();
 
-    await widget.insertPerson(person);
-    // ignore: use_build_context_synchronously
-    Navigator.pop(context, 'OK');
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Enter Details'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+              TextField(
+                controller: designationController,
+                decoration: const InputDecoration(labelText: 'Designation'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty) {
+                  Person person = Person(
+                      name: nameController.text,
+                      designation: designationController.text,
+                      faceJpg: _capturedFace['faceJpg'],
+                      templates: _capturedFace['templates']);
+                  await widget.insertPerson(person);
+                  if (context.mounted) {
+                    Navigator.pop(context); // Close dialog
+                    Navigator.pop(context, 'OK'); // Pop FaceCaptureView
+                  }
+                }
+              },
+              child: const Text('Enroll'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<bool> onFaceDetected(faces) async {

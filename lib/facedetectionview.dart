@@ -12,9 +12,10 @@ import 'person.dart';
 // ignore: must_be_immutable
 class FaceRecognitionView extends StatefulWidget {
   final List<Person> personList;
+  final Function(Person)? logAttendance;
   FaceDetectionViewController? faceDetectionViewController;
 
-  FaceRecognitionView({super.key, required this.personList});
+  FaceRecognitionView({super.key, required this.personList, this.logAttendance});
 
   @override
   State<StatefulWidget> createState() => FaceRecognitionViewState();
@@ -26,6 +27,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
   double _identifyThreshold = 0;
   bool _recognized = false;
   String _identifiedName = "";
+  String _identifiedDesignation = "";
   String _identifiedSimilarity = "";
   String _identifiedLiveness = "";
   String _identifiedYaw = "";
@@ -81,6 +83,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
     bool recognized = false;
     double maxSimilarity = -1;
     String maxSimilarityName = "";
+    String maxSimilarityDesignation = "";
     double maxLiveness = -1;
     double maxYaw = -1;
     double maxRoll = -1;
@@ -95,7 +98,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       print('roll: ' + face['roll'].toString());
       print('pitch: ' + face['pitch'].toString());
       print('face_quality: ' + face['face_quality'].toString());
-      print('face_luminance: ' + face['face_luminance'].toString());
+      print(' : ' + face['face_luminance'].toString());
       print('left_eye_closed: ' + face['left_eye_closed'].toString());
       print('right_eye_closed: ' + face['right_eye_closed'].toString());
       print('face_occlusion: ' + face['face_occlusion'].toString());
@@ -110,6 +113,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
         if (maxSimilarity < similarity) {
           maxSimilarity = similarity;
           maxSimilarityName = person.name;
+          maxSimilarityDesignation = person.designation;
           maxLiveness = face['liveness'];
           maxYaw = face['yaw'];
           maxRoll = face['roll'];
@@ -121,6 +125,10 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
 
       if (maxSimilarity > _identifyThreshold && maxLiveness > _livenessThreshold) {
         recognized = true;
+        if (widget.logAttendance != null) {
+          final matchedPerson = widget.personList.firstWhere((p) => p.name == maxSimilarityName);
+          widget.logAttendance!(matchedPerson);
+        }
       }
     }
 
@@ -129,6 +137,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       setState(() {
         _recognized = recognized;
         _identifiedName = maxSimilarityName;
+        _identifiedDesignation = maxSimilarityDesignation;
         _identifiedSimilarity = maxSimilarity.toString();
         _identifiedLiveness = maxLiveness.toString();
         _identifiedYaw = maxYaw.toString();
@@ -241,6 +250,20 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
                             ),
                             Text(
                               'Identified: $_identifiedName',
+                              style: const TextStyle(fontSize: 18),
+                            )
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                            ),
+                            Text(
+                              'Designation: $_identifiedDesignation',
                               style: const TextStyle(fontSize: 18),
                             )
                           ],

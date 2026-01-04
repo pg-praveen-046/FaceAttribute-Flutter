@@ -17,6 +17,7 @@ import 'person.dart';
 import 'personview.dart';
 import 'facedetectionview.dart';
 import 'facecaptureview.dart';
+import 'attendance_history_view.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,7 +30,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
         title: 'Face Recognition',
-        theme: ThemeData(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(    
           // Define the default brightness and colors.
           useMaterial3: true,
           brightness: Brightness.dark,
@@ -38,12 +40,10 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ignore: must_be_immutable
 class MyHomePage extends StatefulWidget {
   final String title;
-  var personList = <Person>[];
 
-  MyHomePage({super.key, required this.title});
+  const MyHomePage({super.key, required this.title});
 
   @override
   MyHomePageState createState() => MyHomePageState();
@@ -52,6 +52,7 @@ class MyHomePage extends StatefulWidget {
 class MyHomePageState extends State<MyHomePage> {
   String _warningState = "";
   bool _visibleWarning = false;
+  List<Person> personList = [];
 
   final _facesdkPlugin = FacesdkPlugin();
 
@@ -136,29 +137,56 @@ class MyHomePageState extends State<MyHomePage> {
     setState(() {
       _warningState = warningState;
       _visibleWarning = visibleWarning;
-      widget.personList = personList;
+      this.personList = personList;
     });
   }
 
   Future<Database> createDB() async {
     final database = openDatabase(
-      // Set the path to the database. Note: Using the `join` function from the
-      // `path` package is best practice to ensure the path is correctly
-      // constructed for each platform.
       join(await getDatabasesPath(), 'person.db'),
-      // When the database is first created, create a table to store dogs.
-      onCreate: (db, version) {
-        // Run the CREATE TABLE statement on the database.
-        return db.execute(
-          'CREATE TABLE person(name text, faceJpg blob, templates blob)',
+      onCreate: (db, version) async {
+        await db.execute(
+          'CREATE TABLE person(name text, designation text, faceJpg blob, templates blob)',
+        );
+        await db.execute(
+          'CREATE TABLE attendance(id INTEGER PRIMARY KEY AUTOINCREMENT, name text, designation text, date text, time text)',
         );
       },
-      // Set the version. This executes the onCreate function and provides a
-      // path to perform database upgrades and downgrades.
-      version: 1,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+              "ALTER TABLE person ADD COLUMN designation text DEFAULT ''");
+          await db.execute(
+            'CREATE TABLE attendance(id INTEGER PRIMARY KEY AUTOINCREMENT, name text, designation text, date text, time text)',
+          );
+        }
+      },
+      version: 2,
     );
 
     return database;
+  }
+
+  Future<void> logAttendance(Person person) async {
+    final db = await createDB();
+    final now = DateTime.now();
+    final dateStr =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    final timeStr =
+        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+    await db.insert('attendance', {
+      'name': person.name,
+      'designation': person.designation,
+      'date': dateStr,
+      'time': timeStr,
+    });
+    Fluttertoast.showToast(
+      msg: "Attendance logged for ${person.name}",
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: Colors.green,
+      textColor: Colors.white,
+    );
   }
 
   // A method that retrieves all the dogs from the dogs table.
@@ -190,7 +218,7 @@ class MyHomePageState extends State<MyHomePage> {
     );
 
     setState(() {
-      widget.personList.add(person);
+      personList.add(person);
     });
   }
 
@@ -199,7 +227,7 @@ class MyHomePageState extends State<MyHomePage> {
     await db.delete('person');
 
     setState(() {
-      widget.personList.clear();
+      personList.clear();
     });
 
     Fluttertoast.showToast(
@@ -216,12 +244,12 @@ class MyHomePageState extends State<MyHomePage> {
     // ignore: invalid_use_of_protected_member
 
     final db = await createDB();
-    await db.delete('person',
-        where: 'name=?', whereArgs: [widget.personList[index].name]);
+    await db
+        .delete('person', where: 'name=?', whereArgs: [personList[index].name]);
 
     // ignore: invalid_use_of_protected_member
     setState(() {
-      widget.personList.removeAt(index);
+      personList.removeAt(index);
     });
 
     Fluttertoast.showToast(
@@ -234,7 +262,7 @@ class MyHomePageState extends State<MyHomePage> {
         fontSize: 16.0);
   }
 
-  Future enrollPerson() async {
+  Future<void> enrollPerson() async {
     try {
       final image = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (image == null) return;
@@ -244,13 +272,56 @@ class MyHomePageState extends State<MyHomePage> {
 
       final faces = await _facesdkPlugin.extractFaces(rotatedImage.path);
       for (var face in faces) {
-        num randomNumber =
-            10000 + Random().nextInt(10000); // from 0 upto 99 included
-        Person person = Person(
-            name: 'Person' + randomNumber.toString(),
-            faceJpg: face['faceJpg'],
-            templates: face['templates']);
-        insertPerson(person);
+        TextEditingController nameController = TextEditingController();
+        TextEditingController designationController = TextEditingController();
+
+        if (mounted) {
+          await showDialog(
+            context: this.context,
+            barrierDismissible: false,
+            builder: (BuildContext dialogContext) {
+              return AlertDialog(
+                title: const Text('Enter Details'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Name'),
+                    ),
+                    TextField(
+                      controller: designationController,
+                      decoration:
+                          const InputDecoration(labelText: 'Designation'),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                    },
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      if (nameController.text.isNotEmpty) {
+                        Person person = Person(
+                            name: nameController.text,
+                            designation: designationController.text,
+                            faceJpg: face['faceJpg'],
+                            templates: face['templates']);
+                        await insertPerson(person);
+                        if (dialogContext.mounted) Navigator.pop(dialogContext);
+                      }
+                    },
+                    child: const Text('Enroll'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
       }
 
       if (faces.length == 0) {
@@ -281,7 +352,6 @@ class MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: const Text('Face Recognition'),
         toolbarHeight: 70,
-        centerTitle: true,
       ),
       body: Container(
         margin: const EdgeInsets.only(left: 16.0, right: 16.0),
@@ -341,7 +411,8 @@ class MyHomePageState extends State<MyHomePage> {
                           context,
                           MaterialPageRoute(
                               builder: (context) => FaceRecognitionView(
-                                    personList: widget.personList,
+                                    personList: personList,
+                                    logAttendance: logAttendance,
                                   )),
                         );
                       }),
@@ -397,9 +468,37 @@ class MyHomePageState extends State<MyHomePage> {
                           context,
                           MaterialPageRoute(
                               builder: (context) => FaceCaptureView(
-                                    personList: widget.personList,
+                                    personList: personList,
                                     insertPerson: insertPerson,
                                   )),
+                        );
+                      }),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  flex: 1,
+                  child: ElevatedButton.icon(
+                      label: const Text('Attendance History'),
+                      icon: const Icon(
+                        Icons.history,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.only(top: 10, bottom: 10),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(12.0)),
+                          )),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => AttendanceHistoryView()),
                         );
                       }),
                 ),
@@ -412,7 +511,7 @@ class MyHomePageState extends State<MyHomePage> {
                 child: Stack(
               children: [
                 PersonView(
-                  personList: widget.personList,
+                  personList: personList,
                   homePageState: this,
                 ),
                 Column(
@@ -436,18 +535,6 @@ class MyHomePageState extends State<MyHomePage> {
                 )
               ],
             )),
-            const SizedBox(
-              height: 4,
-            ),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image(
-                  image: AssetImage('assets/ic_kby.png'),
-                  height: 32,
-                ),
-              ],
-            ),
             const SizedBox(height: 4),
           ],
         ),

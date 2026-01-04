@@ -26,8 +26,44 @@ class _PersonViewState extends State<PersonView> {
         itemBuilder: (BuildContext context, int index) {
           return SizedBox(
               height: 75,
-              child: Card(
-                  child: Row(
+              child: InkWell(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text(widget.personList[index].name, textAlign: TextAlign.center),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(50.0),
+                              child: Image.memory(
+                                widget.personList[index].faceJpg,
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              widget.personList[index].designation.isNotEmpty 
+                                  ? widget.personList[index].designation 
+                                  : 'No Designation',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: Card(
+                      child: Row(
                 children: [
                   const SizedBox(
                     width: 16,
@@ -43,7 +79,15 @@ class _PersonViewState extends State<PersonView> {
                   const SizedBox(
                     width: 16,
                   ),
-                  Text(widget.personList[index].name),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.personList[index].name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      if (widget.personList[index].designation.isNotEmpty)
+                        Text(widget.personList[index].designation, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.delete),
@@ -53,7 +97,7 @@ class _PersonViewState extends State<PersonView> {
                     width: 8,
                   )
                 ],
-              )));
+              ))));
         });
   }
 }
