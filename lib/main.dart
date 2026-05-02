@@ -6,7 +6,7 @@ import 'dart:math';
 import 'package:facesdk_plugin/facesdk_plugin.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' hide context;
 import 'package:sqflite/sqflite.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -53,6 +53,7 @@ class MyHomePageState extends State<MyHomePage> {
   String _warningState = "";
   bool _visibleWarning = false;
   List<Person> personList = [];
+  bool _isFirstLoad = true;
 
   final _facesdkPlugin = FacesdkPlugin();
 
@@ -139,6 +140,31 @@ class MyHomePageState extends State<MyHomePage> {
       _visibleWarning = visibleWarning;
       this.personList = personList;
     });
+
+    if (facepluginState == 0) {
+      Future.delayed(Duration.zero, () {
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => FaceRecognitionView(
+                    personList: this.personList,
+                    logAttendance: logAttendance,
+                    insertPerson: insertPerson,
+                  )),
+        ).then((_) {
+          if (mounted) {
+            setState(() {
+              _isFirstLoad = false;
+            });
+          }
+        });
+      });
+    } else {
+      setState(() {
+        _isFirstLoad = false;
+      });
+    }
   }
 
   Future<Database> createDB() async {
@@ -348,11 +374,44 @@ class MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Face Recognition'),
-        toolbarHeight: 70,
-      ),
+    if (_isFirstLoad) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => FaceRecognitionView(
+                    personList: personList,
+                    logAttendance: logAttendance,
+                    insertPerson: insertPerson,
+                  )),
+        );
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => FaceRecognitionView(
+                          personList: personList,
+                          logAttendance: logAttendance,
+                          insertPerson: insertPerson,
+                        )),
+              );
+            },
+          ),
+          title: const Text('Face Recognition'),
+          toolbarHeight: 70,
+        ),
       body: Container(
         margin: const EdgeInsets.only(left: 16.0, right: 16.0),
         child: Column(
@@ -413,6 +472,7 @@ class MyHomePageState extends State<MyHomePage> {
                               builder: (context) => FaceRecognitionView(
                                     personList: personList,
                                     logAttendance: logAttendance,
+                                    insertPerson: insertPerson,
                                   )),
                         );
                       }),
@@ -539,6 +599,7 @@ class MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

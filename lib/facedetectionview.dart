@@ -8,14 +8,16 @@ import 'package:facesdk_plugin/facedetection_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:facesdk_plugin/facesdk_plugin.dart';
 import 'person.dart';
+import 'facecaptureview.dart';
 
 // ignore: must_be_immutable
 class FaceRecognitionView extends StatefulWidget {
   final List<Person> personList;
   final Function(Person)? logAttendance;
+  final Function(Person)? insertPerson;
   FaceDetectionViewController? faceDetectionViewController;
 
-  FaceRecognitionView({super.key, required this.personList, this.logAttendance});
+  FaceRecognitionView({super.key, required this.personList, this.logAttendance, this.insertPerson});
 
   @override
   State<StatefulWidget> createState() => FaceRecognitionViewState();
@@ -39,6 +41,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
   var _enrolledFace;
   final _facesdkPlugin = FacesdkPlugin();
   FaceDetectionViewController? faceDetectionViewController;
+  bool _isDialogShowing = false;
 
   @override
   void initState() {
@@ -69,8 +72,36 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
     await faceDetectionViewController?.startCamera(cameraLens ?? 1);
   }
 
+  String _formatPercent(String value) {
+    try {
+      return '${(double.parse(value) * 100).toStringAsFixed(1)}%';
+    } catch (e) {
+      return value;
+    }
+  }
+
+  String _formatDecimal(String value) {
+    try {
+      return double.parse(value).toStringAsFixed(2);
+    } catch (e) {
+      return value;
+    }
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 22, color: Colors.white70),
+        const SizedBox(width: 12),
+        Text(label, style: const TextStyle(fontSize: 16, color: Colors.white70)),
+        const Spacer(),
+        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
   Future<bool> onFaceDetected(faces) async {
-    if (_recognized == true) {
+    if (_recognized == true || _isDialogShowing == true) {
       return false;
     }
 
@@ -104,7 +135,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       print('face_occlusion: ' + face['face_occlusion'].toString());
       print('mouth_opened: ' + face['mouth_opened'].toString());
       print('age: ' + face['age'].toString());
-      print('gender: ' + face['gender'].toString());
+      print('gender: ' + face['gender'].toString());  
 
       for (var person in widget.personList) {
         double similarity = await _facesdkPlugin.similarityCalculation(
@@ -147,25 +178,90 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
         _identifiedFace = identifedFace;
       });
       if (recognized) {
-        faceDetectionViewController?.stopCamera();
+        // faceDetectionViewController?.stopCamera(); 
         setState(() {
           _faces = null;
+          _recognized = true;
         });
+
+        Timer(const Duration(seconds: 5), () {
+          if (mounted) {
+            setState(() {
+              _recognized = false;
+            });
+          }
+        });
+      } else if (faces.length > 0 && faces[0]['liveness'] > _livenessThreshold && maxSimilarity <= _identifyThreshold) {
+        var face = faces[0];
+        if (face['yaw'].abs() < 15 && face['roll'].abs() < 15 && face['pitch'].abs() < 15 && face['face_quality'] > 0.4) {
+          _isDialogShowing = true;
+          faceDetectionViewController?.stopCamera();
+          showEnrollDialog();
+        }
       }
     });
 
     return recognized;
   }
 
+  void showEnrollDialog() async {
+    bool? enroll = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Face Not Recognized'),
+          content: const Text('This face is not enrolled. Do you want to enroll now?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Enroll'),
+            ),
+          ],
+        );
+      }
+    );
+
+    if (enroll == true && widget.insertPerson != null) {
+       await Navigator.push(
+          context,
+          MaterialPageRoute(
+             builder: (context) => FaceCaptureView(
+                personList: widget.personList,
+                insertPerson: widget.insertPerson!,
+             ),
+          ),
+       );
+    }
+    
+    _isDialogShowing = false;
+    faceRecognitionStart();
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
+        if (_recognized) {
+          faceRecognitionStart();
+          return false;
+        }
         faceDetectionViewController?.stopCamera();
         return true;
       },
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              faceDetectionViewController?.stopCamera();
+              Navigator.pop(context);
+            },
+          ),
           title: const Text('Face Recognition'),
           toolbarHeight: 70,
           centerTitle: true,
@@ -181,176 +277,89 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
                     faces: _faces, livenessThreshold: _livenessThreshold),
               ),
             ),
-            Visibility(
-                visible: _recognized,
-                child: Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  color: Theme.of(context).colorScheme.background,
-                  child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: <Widget>[
-                            _enrolledFace != null
-                                ? Column(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(8.0),
-                                        child: Image.memory(
-                                          _enrolledFace,
-                                          width: 160,
-                                          height: 160,
-                                        ),
-                                      ),
-                                      const SizedBox(
-                                        height: 5,
-                                      ),
-                                      const Text('Enrolled')
-                                    ],
-                                  )
-                                : const SizedBox(
-                                    height: 1,
+            if (_recognized)
+              Positioned(
+                bottom: 30,
+                left: 15,
+                right: 15,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value.clamp(0.0, 1.0),
+                      child: Transform.translate(
+                        offset: Offset(0, 30 * (1 - value)),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: SafeArea(
+                    top: false,
+                    left: false,
+                    right: false,
+                    child: Card( 
+                      elevation: 12,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      color: const Color(0xFF252525),
+                      child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      child: Row(
+                        children: [
+                          if (_identifiedFace != null)
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.greenAccent, width: 2),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.memory(
+                                  _identifiedFace,
+                                  width: 65,
+                                  height: 65,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _identifiedName.toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
                                   ),
-                            _identifiedFace != null
-                                ? Column(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(8.0),
-                                        child: Image.memory(
-                                          _identifiedFace,
-                                          width: 160,
-                                          height: 160,
-                                        ),
-                                      ),
-                                      const SizedBox(
-                                        height: 5,
-                                      ),
-                                      const Text('Identified')
-                                    ],
-                                  )
-                                : const SizedBox(
-                                    height: 1,
-                                  )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _identifiedDesignation.toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.greenAccent,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                            Text(
-                              'Identified: $_identifiedName',
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                            ),
-                            Text(
-                              'Designation: $_identifiedDesignation',
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                            ),
-                            Text(
-                              'Similarity: $_identifiedSimilarity',
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                            ),
-                            Text(
-                              'Liveness score: $_identifiedLiveness',
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                            ),
-                            Text(
-                              'Yaw: $_identifiedYaw',
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                            ),
-                            Text(
-                              'Roll: $_identifiedRoll',
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                            ),
-                            Text(
-                              'Pitch: $_identifiedPitch',
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 16,
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primaryContainer,
                           ),
-                          onPressed: () => faceRecognitionStart(),
-                          child: const Text('Try again'),
-                        ),
-                      ]),
-                )),
+                          const Icon(Icons.check_circle, color: Colors.greenAccent, size: 32),
+                        ],
+                      ),
+                    ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
