@@ -150,6 +150,7 @@ class MyHomePageState extends State<MyHomePage> {
               builder: (context) => FaceRecognitionView(
                     personList: this.personList,
                     logAttendance: logAttendance,
+                    getLastPunchToday: getLastPunchToday,
                     insertPerson: insertPerson,
                   )),
         ).then((_) {
@@ -175,7 +176,7 @@ class MyHomePageState extends State<MyHomePage> {
           'CREATE TABLE person(name text, designation text, faceJpg blob, templates blob)',
         );
         await db.execute(
-          'CREATE TABLE attendance(id INTEGER PRIMARY KEY AUTOINCREMENT, name text, designation text, date text, time text)',
+          'CREATE TABLE attendance(id INTEGER PRIMARY KEY AUTOINCREMENT, name text, designation text, date text, time text, type text, remark text)',
         );
       },
       onUpgrade: (db, oldVersion, newVersion) async {
@@ -183,7 +184,7 @@ class MyHomePageState extends State<MyHomePage> {
           await db.execute(
               "ALTER TABLE person ADD COLUMN designation text DEFAULT ''");
           await db.execute(
-            'CREATE TABLE attendance(id INTEGER PRIMARY KEY AUTOINCREMENT, name text, designation text, date text, time text)',
+            'CREATE TABLE attendance(id INTEGER PRIMARY KEY AUTOINCREMENT, name text, designation text, date text, time text, type text, remark text)',
           );
         }
       },
@@ -193,7 +194,7 @@ class MyHomePageState extends State<MyHomePage> {
     return database;
   }
 
-  Future<void> logAttendance(Person person) async {
+  Future<void> logAttendance(Person person, {String type = "IN", String remark = ""}) async {
     final db = await createDB();
     final now = DateTime.now();
     final dateStr =
@@ -205,14 +206,36 @@ class MyHomePageState extends State<MyHomePage> {
       'designation': person.designation,
       'date': dateStr,
       'time': timeStr,
+      'type': type,
+      'remark': remark,
     });
     Fluttertoast.showToast(
-      msg: "Attendance logged for ${person.name}",
+      msg: "${type == "IN" ? "Attendance" : "Break"} logged for ${person.name}",
       toastLength: Toast.LENGTH_SHORT,
       gravity: ToastGravity.BOTTOM,
       backgroundColor: Colors.green,
       textColor: Colors.white,
     );
+  }
+
+  Future<Map<String, dynamic>?> getLastPunchToday(String name) async {
+    final db = await createDB();
+    final now = DateTime.now();
+    final dateStr =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    
+    final List<Map<String, dynamic>> maps = await db.query(
+      'attendance',
+      where: 'name = ? AND date = ?',
+      whereArgs: [name, dateStr],
+      orderBy: 'id DESC',
+      limit: 1,
+    );
+
+    if (maps.isNotEmpty) {
+      return maps.first;
+    }
+    return null;
   }
 
   // A method that retrieves all the dogs from the dogs table.
@@ -298,6 +321,35 @@ class MyHomePageState extends State<MyHomePage> {
 
       final faces = await _facesdkPlugin.extractFaces(rotatedImage.path);
       for (var face in faces) {
+        // Check if face already exists
+        final prefs = await SharedPreferences.getInstance();
+        String? identifyThresholdStr = prefs.getString("identify_threshold");
+        double identifyThreshold = double.parse(identifyThresholdStr ?? "0.8");
+
+        bool faceExists = false;
+        String matchedName = "";
+        for (var p in personList) {
+          double similarity = await _facesdkPlugin.similarityCalculation(
+                  face['templates'], p.templates) ??
+              -1;
+          if (similarity > identifyThreshold) {
+            faceExists = true;
+            matchedName = p.name;
+            break;
+          }
+        }
+
+        if (faceExists) {
+          Fluttertoast.showToast(
+            msg: "This face is already enrolled as $matchedName!",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.BOTTOM,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+          );
+          continue;
+        }
+
         TextEditingController nameController = TextEditingController();
         TextEditingController designationController = TextEditingController();
 
@@ -332,8 +384,44 @@ class MyHomePageState extends State<MyHomePage> {
                   TextButton(
                     onPressed: () async {
                       if (nameController.text.isNotEmpty) {
+                        String name = nameController.text.trim();
+
+                        // Check if name already exists
+                        bool nameExists = personList.any((p) => p.name.toLowerCase() == name.toLowerCase());
+                        if (nameExists) {
+                          Fluttertoast.showToast(
+                            msg: "Employee already enrolled with this name!",
+                            toastLength: Toast.LENGTH_SHORT,
+                            gravity: ToastGravity.BOTTOM,
+                            backgroundColor: Colors.red,
+                            textColor: Colors.white,
+                          );
+                          return;
+                        }
+
+                        // Check if face already exists
+                        final prefs = await SharedPreferences.getInstance();
+                        String? identifyThresholdStr = prefs.getString("identify_threshold");
+                        double identifyThreshold = double.parse(identifyThresholdStr ?? "0.8");
+
+                        for (var p in personList) {
+                          double similarity = await _facesdkPlugin.similarityCalculation(
+                                  face['templates'], p.templates) ??
+                              -1;
+                          if (similarity > identifyThreshold) {
+                            Fluttertoast.showToast(
+                              msg: "This face is already enrolled as ${p.name}!",
+                              toastLength: Toast.LENGTH_SHORT,
+                              gravity: ToastGravity.BOTTOM,
+                              backgroundColor: Colors.red,
+                              textColor: Colors.white,
+                            );
+                            return;
+                          }
+                        }
+
                         Person person = Person(
-                            name: nameController.text,
+                            name: name,
                             designation: designationController.text,
                             faceJpg: face['faceJpg'],
                             templates: face['templates']);
@@ -388,6 +476,7 @@ class MyHomePageState extends State<MyHomePage> {
               builder: (context) => FaceRecognitionView(
                     personList: personList,
                     logAttendance: logAttendance,
+                    getLastPunchToday: getLastPunchToday,
                     insertPerson: insertPerson,
                   )),
         );
@@ -404,6 +493,7 @@ class MyHomePageState extends State<MyHomePage> {
                     builder: (context) => FaceRecognitionView(
                           personList: personList,
                           logAttendance: logAttendance,
+                          getLastPunchToday: getLastPunchToday,
                           insertPerson: insertPerson,
                         )),
               );
@@ -472,6 +562,7 @@ class MyHomePageState extends State<MyHomePage> {
                               builder: (context) => FaceRecognitionView(
                                     personList: personList,
                                     logAttendance: logAttendance,
+                                    getLastPunchToday: getLastPunchToday,
                                     insertPerson: insertPerson,
                                   )),
                         );

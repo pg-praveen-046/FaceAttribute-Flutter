@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:facesdk_plugin/facedetection_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:facesdk_plugin/facesdk_plugin.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'person.dart';
 
 enum ViewMode {
@@ -193,8 +194,40 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
             TextButton(
               onPressed: () async {
                 if (nameController.text.isNotEmpty) {
+                  String name = nameController.text.trim();
+                  
+                  // Check if name already exists
+                  bool nameExists = widget.personList.any((p) => p.name.toLowerCase() == name.toLowerCase());
+                  if (nameExists) {
+                    Fluttertoast.showToast(
+                      msg: "Employee already enrolled with this name!",
+                      toastLength: Toast.LENGTH_SHORT,
+                      gravity: ToastGravity.BOTTOM,
+                      backgroundColor: Colors.red,
+                      textColor: Colors.white,
+                    );
+                    return;
+                  }
+
+                  // Check if face already exists
+                  for (var person in widget.personList) {
+                    double similarity = await _facesdkPlugin.similarityCalculation(
+                            _capturedFace['templates'], person.templates) ??
+                        -1;
+                    if (similarity > _identifyThreshold) {
+                      Fluttertoast.showToast(
+                        msg: "This face is already enrolled as ${person.name}!",
+                        toastLength: Toast.LENGTH_SHORT,
+                        gravity: ToastGravity.BOTTOM,
+                        backgroundColor: Colors.red,
+                        textColor: Colors.white,
+                      );
+                      return;
+                    }
+                  }
+
                   Person person = Person(
-                      name: nameController.text,
+                      name: name,
                       designation: designationController.text,
                       faceJpg: _capturedFace['faceJpg'],
                       templates: _capturedFace['templates']);
@@ -279,6 +312,36 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
           _warningTxt = "Spoof face";
         });
       } else {
+        // Check if face already exists
+        bool faceExists = false;
+        String matchedName = "";
+        for (var person in widget.personList) {
+          double similarity = await _facesdkPlugin.similarityCalculation(
+                  _currentFace['templates'], person.templates) ??
+              -1;
+          if (similarity > _identifyThreshold) {
+            faceExists = true;
+            matchedName = person.name;
+            break;
+          }
+        }
+
+        if (faceExists) {
+          if (_warningTxt != "Already enrolled as $matchedName") {
+            Fluttertoast.showToast(
+              msg: "This face is already enrolled as $matchedName!",
+              toastLength: Toast.LENGTH_SHORT,
+              gravity: ToastGravity.BOTTOM,
+              backgroundColor: Colors.red,
+              textColor: Colors.white,
+            );
+          }
+          setState(() {
+            _warningTxt = "Already enrolled as $matchedName";
+          });
+          return false;
+        }
+
         // createClipedImage();
         ui.Image capturedImage =
             await decodeImageFromList(_currentFace['faceJpg']);
@@ -556,18 +619,31 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
                       setViewMode: setViewMode,
                       currentFace: _capturedImage,
                     ))),
-            Container(
-              margin: const EdgeInsets.only(right: 20, top: 64),
-              alignment: Alignment.topRight,
-              child: Text(
-                _warningTxt, // Equivalent to android:text=""
-                style: const TextStyle(
-                  color: Colors
-                      .redAccent, // Equivalent to android:textColor="@android:color/holo_red_light"
-                  fontSize: 16, // Equivalent to android:textSize="16sp"
+            if (_warningTxt.isNotEmpty)
+              Positioned(
+                top: 100,
+                left: 20,
+                right: 20,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.redAccent, width: 2),
+                    ),
+                    child: Text(
+                      _warningTxt,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
-              ), // Equivalent to constraintEnd_toEndOf and constraintTop_toTopOf
-            ),
+              ),
             Visibility(
                 visible:
                     _viewMode.index == ViewMode.FACE_CAPTURE_FINISHED.index,

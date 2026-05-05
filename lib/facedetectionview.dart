@@ -13,11 +13,12 @@ import 'facecaptureview.dart';
 // ignore: must_be_immutable
 class FaceRecognitionView extends StatefulWidget {
   final List<Person> personList;
-  final Function(Person)? logAttendance;
+  final Function(Person, {String type, String remark})? logAttendance;
+  final Future<Map<String, dynamic>?> Function(String)? getLastPunchToday;
   final Function(Person)? insertPerson;
   FaceDetectionViewController? faceDetectionViewController;
 
-  FaceRecognitionView({super.key, required this.personList, this.logAttendance, this.insertPerson});
+  FaceRecognitionView({super.key, required this.personList, this.logAttendance, this.getLastPunchToday, this.insertPerson});
 
   @override
   State<StatefulWidget> createState() => FaceRecognitionViewState();
@@ -42,6 +43,14 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
   final _facesdkPlugin = FacesdkPlugin();
   FaceDetectionViewController? faceDetectionViewController;
   bool _isDialogShowing = false;
+  bool _showOutRequest = false;
+  bool _showWelcomeCard = false;
+  Person? _lastMatchedPerson;
+  String _currentPunchType = "IN";
+  String _currentPunchRemark = "";
+  String _currentPunchTime = "";
+  int _outRequestTimer = 30;
+  Timer? _countdownTimer;
 
   @override
   void initState() {
@@ -156,52 +165,116 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
 
       if (maxSimilarity > _identifyThreshold && maxLiveness > _livenessThreshold) {
         recognized = true;
-        if (widget.logAttendance != null) {
-          final matchedPerson = widget.personList.firstWhere((p) => p.name == maxSimilarityName);
-          widget.logAttendance!(matchedPerson);
-        }
       }
     }
 
-    Future.delayed(const Duration(milliseconds: 100), () {
+    Future.delayed(const Duration(milliseconds: 100), () async {
       if (!mounted) return false;
-      setState(() {
-        _recognized = recognized;
-        _identifiedName = maxSimilarityName;
-        _identifiedDesignation = maxSimilarityDesignation;
-        _identifiedSimilarity = maxSimilarity.toString();
-        _identifiedLiveness = maxLiveness.toString();
-        _identifiedYaw = maxYaw.toString();
-        _identifiedRoll = maxRoll.toString();
-        _identifiedPitch = maxPitch.toString();
-        _enrolledFace = enrolledFace;
-        _identifiedFace = identifedFace;
-      });
-      if (recognized) {
-        // faceDetectionViewController?.stopCamera(); 
+      
+      if (recognized && !_showOutRequest && !_showWelcomeCard) {
+        _lastMatchedPerson = widget.personList.firstWhere((p) => p.name == maxSimilarityName);
+        
+        // Check if first scan today
+        Map<String, dynamic>? lastPunch;
+        if (widget.getLastPunchToday != null) {
+          lastPunch = await widget.getLastPunchToday!(_lastMatchedPerson!.name);
+        }
+
+        final now = DateTime.now();
+        final timeStr = "${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
+        _currentPunchTime = timeStr;
+
+        if (lastPunch == null) {
+          // First scan - Attendance (IN)
+          _currentPunchType = "IN";
+          
+          // Logic: 10:00 to 10:15 is Present, after 10:15 is Late
+          if (now.hour < 10 || (now.hour == 10 && now.minute <= 15)) {
+            _currentPunchRemark = "PRESENT";
+          } else {
+            int lateMinutes = (now.hour - 10) * 60 + now.minute;
+            _currentPunchRemark = "$lateMinutes MINS LATE";
+          }
+
+          if (widget.logAttendance != null) {
+            widget.logAttendance!(_lastMatchedPerson!, type: "IN", remark: _currentPunchRemark);
+          }
+          
+          setState(() {
+            _recognized = true;
+            _showWelcomeCard = true;
+            _faces = null;
+          });
+        } else {
+          // Subsequent scan - Out Request (OUT)
+          setState(() {
+            _recognized = true;
+            _showOutRequest = true;
+            _faces = null;
+          });
+          startOutRequestTimer();
+        }
+      } else {
         setState(() {
-          _faces = null;
-          _recognized = true;
+          _recognized = recognized;
+          _identifiedName = maxSimilarityName;
+          _identifiedDesignation = maxSimilarityDesignation;
+          _identifiedSimilarity = maxSimilarity.toString();
+          _identifiedLiveness = maxLiveness.toString();
+          _identifiedYaw = maxYaw.toString();
+          _identifiedRoll = maxRoll.toString();
+          _identifiedPitch = maxPitch.toString();
+          _enrolledFace = enrolledFace;
+          _identifiedFace = identifedFace;
         });
 
-        Timer(const Duration(seconds: 5), () {
-          if (mounted) {
-            setState(() {
-              _recognized = false;
-            });
+        if (!recognized && faces.length > 0 && faces[0]['liveness'] > _livenessThreshold && maxSimilarity <= _identifyThreshold) {
+          var face = faces[0];
+          if (face['yaw'].abs() < 15 && face['roll'].abs() < 15 && face['pitch'].abs() < 15 && face['face_quality'] > 0.4) {
+            _isDialogShowing = true;
+            faceDetectionViewController?.stopCamera();
+            showEnrollDialog();
           }
-        });
-      } else if (faces.length > 0 && faces[0]['liveness'] > _livenessThreshold && maxSimilarity <= _identifyThreshold) {
-        var face = faces[0];
-        if (face['yaw'].abs() < 15 && face['roll'].abs() < 15 && face['pitch'].abs() < 15 && face['face_quality'] > 0.4) {
-          _isDialogShowing = true;
-          faceDetectionViewController?.stopCamera();
-          showEnrollDialog();
         }
       }
     });
 
     return recognized;
+  }
+
+  void startOutRequestTimer() {
+    _outRequestTimer = 30;
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_outRequestTimer > 0) {
+          _outRequestTimer--;
+        } else {
+          _showOutRequest = false;
+          _recognized = false;
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  void selectOutPurpose(String purpose) {
+    _countdownTimer?.cancel();
+    _currentPunchType = "OUT";
+    _currentPunchRemark = "OUT for $purpose Break";
+    
+    if (widget.logAttendance != null && _lastMatchedPerson != null) {
+      widget.logAttendance!(_lastMatchedPerson!, type: "OUT", remark: _currentPunchRemark);
+    }
+
+    setState(() {
+      _showOutRequest = false;
+      _showWelcomeCard = true;
+    });
   }
 
   void showEnrollDialog() async {
@@ -277,7 +350,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
                     faces: _faces, livenessThreshold: _livenessThreshold),
               ),
             ),
-            if (_recognized)
+            if (_recognized && !_showOutRequest && !_showWelcomeCard)
               Positioned(
                 bottom: 30,
                 left: 15,
@@ -360,8 +433,164 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
                   ),
                 ),
               ),
+            
+            // Out Request Purpose Dialog
+            if (_showOutRequest)
+              Container(
+                color: Colors.black.withOpacity(0.7),
+                child: Center(
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E1E),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.redAccent.withOpacity(0.5), width: 1),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          "Out Request Purpose",
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.access_time, size: 18, color: Colors.white70),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Next face attendance check in: ${_outRequestTimer}s",
+                                style: const TextStyle(fontSize: 14, color: Colors.white70),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        GridView.count(
+                          shrinkWrap: true,
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 2.2,
+                          children: [
+                            _buildPurposeButton("Tea", Icons.coffee, Colors.blue),
+                            _buildPurposeButton("Lunch", Icons.restaurant, Colors.green),
+                            _buildPurposeButton("Bank", Icons.account_balance, Colors.cyan),
+                            _buildPurposeButton("Others", Icons.more_horiz, Colors.orange),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            // Welcome / Success Card
+            if (_showWelcomeCard && _lastMatchedPerson != null)
+              Container(
+                color: Colors.black.withOpacity(0.8),
+                child: Center(
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.9,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          "Welcome",
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                        Text(
+                          _lastMatchedPerson!.name,
+                          style: const TextStyle(fontSize: 22, color: Color(0xFF673AB7), fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 20),
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundImage: MemoryImage(_lastMatchedPerson!.faceJpg),
+                        ),
+                        const SizedBox(height: 30),
+                        _buildDetailRow("Employee ID:", "12100"),
+                        _buildDetailRow("Location:", "IDL"),
+                        _buildDetailRow("Email:", "ranjithkumarb8072@gmail.com"),
+                        _buildDetailRow("Phone:", "8072974576"),
+                        _buildDetailRow("Punch Time:", _currentPunchTime, valueColor: Colors.green),
+                        _buildDetailRow("Entry Type:", _currentPunchType),
+                        _buildDetailRow("Remark:", _currentPunchRemark, valueColor: Colors.black54),
+                        const SizedBox(height: 30),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _showWelcomeCard = false;
+                                _recognized = false;
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text("Next Scan", style: TextStyle(fontSize: 18, color: Colors.white)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPurposeButton(String title, IconData icon, Color color) {
+    return InkWell(
+      onTap: () => selectOutPurpose(title),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.6), width: 1.5),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(title, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 16, color: valueColor ?? Colors.black54, fontWeight: valueColor != null ? FontWeight.bold : FontWeight.normal),
+            ),
+          ),
+        ],
       ),
     );
   }
