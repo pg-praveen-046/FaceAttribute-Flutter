@@ -11,13 +11,14 @@ import 'package:sqflite/sqflite.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
-import 'about.dart';
 import 'settings.dart';
 import 'person.dart';
 import 'personview.dart';
 import 'facedetectionview.dart';
 import 'facecaptureview.dart';
 import 'attendance_history_view.dart';
+import 'staff_enrollment_view.dart';
+import 'login_view.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,19 +32,56 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
         title: 'Face Recognition',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(    
-          // Define the default brightness and colors.
+        theme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,
+          primaryColor: Colors.indigoAccent,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.indigoAccent,
+            brightness: Brightness.dark,
+            primary: Colors.indigoAccent,
+            secondary: Colors.cyanAccent,
+            surface: const Color(0xFF0F0F0F),
+          ),
+          scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+          cardTheme: CardTheme(
+            color: const Color(0xFF1A1A1A),
+            elevation: 4,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            margin: const EdgeInsets.symmetric(vertical: 8),
+          ),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            titleTextStyle: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+              color: Colors.white,
+            ),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigoAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              elevation: 4,
+            ),
+          ),
         ),
-        home: MyHomePage(title: 'Face Recognition'));
+        home: const LoginView());
   }
 }
 
 class MyHomePage extends StatefulWidget {
   final String title;
+  final String role;
 
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({super.key, required this.title, this.role = 'admin'});
 
   @override
   MyHomePageState createState() => MyHomePageState();
@@ -141,7 +179,7 @@ class MyHomePageState extends State<MyHomePage> {
       this.personList = personList;
     });
 
-    if (facepluginState == 0) {
+    if (facepluginState == 0 && widget.role == 'user') {
       Future.delayed(Duration.zero, () {
         if (!mounted) return;
         Navigator.push(
@@ -152,6 +190,7 @@ class MyHomePageState extends State<MyHomePage> {
                     logAttendance: logAttendance,
                     getLastPunchToday: getLastPunchToday,
                     insertPerson: insertPerson,
+                    role: widget.role,
                   )),
         ).then((_) {
           if (mounted) {
@@ -173,7 +212,7 @@ class MyHomePageState extends State<MyHomePage> {
       join(await getDatabasesPath(), 'person.db'),
       onCreate: (db, version) async {
         await db.execute(
-          'CREATE TABLE person(name text, designation text, faceJpg blob, templates blob)',
+          'CREATE TABLE person(name text, designation text, email text, contact text, inTime text, outTime text, faceJpg blob, templates blob)',
         );
         await db.execute(
           'CREATE TABLE attendance(id INTEGER PRIMARY KEY AUTOINCREMENT, name text, designation text, date text, time text, type text, remark text)',
@@ -181,26 +220,65 @@ class MyHomePageState extends State<MyHomePage> {
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          await db.execute(
-              "ALTER TABLE person ADD COLUMN designation text DEFAULT ''");
-          await db.execute(
-            'CREATE TABLE attendance(id INTEGER PRIMARY KEY AUTOINCREMENT, name text, designation text, date text, time text, type text, remark text)',
-          );
+          try {
+            await db.execute(
+                "ALTER TABLE person ADD COLUMN designation text DEFAULT ''");
+          } catch (e) {}
+          try {
+            await db.execute(
+              'CREATE TABLE attendance(id INTEGER PRIMARY KEY AUTOINCREMENT, name text, designation text, date text, time text, type text, remark text)',
+            );
+          } catch (e) {}
+        }
+        if (oldVersion < 3) {
+          try {
+            await db.execute(
+                "ALTER TABLE person ADD COLUMN email text DEFAULT ''");
+          } catch (e) {}
+          try {
+            await db.execute(
+                "ALTER TABLE person ADD COLUMN contact text DEFAULT ''");
+          } catch (e) {}
+          try {
+            await db.execute(
+                "ALTER TABLE person ADD COLUMN inTime text DEFAULT '09:00 AM'");
+          } catch (e) {}
+          try {
+            await db.execute(
+                "ALTER TABLE person ADD COLUMN outTime text DEFAULT '06:00 PM'");
+          } catch (e) {}
+        }
+        if (oldVersion < 4) {
+          try {
+            await db.execute(
+                "ALTER TABLE attendance ADD COLUMN type text DEFAULT 'IN'");
+          } catch (e) {}
+        }
+        if (oldVersion < 5) {
+          try {
+            await db.execute(
+                "ALTER TABLE attendance ADD COLUMN remark text DEFAULT ''");
+          } catch (e) {}
+          try {
+            await db.execute(
+                "ALTER TABLE attendance ADD COLUMN designation text DEFAULT ''");
+          } catch (e) {}
         }
       },
-      version: 2,
+      version: 5,
     );
 
     return database;
   }
 
-  Future<void> logAttendance(Person person, {String type = "IN", String remark = ""}) async {
+  Future<void> logAttendance(Person person,
+      {String type = "IN", String remark = ""}) async {
     final db = await createDB();
     final now = DateTime.now();
     final dateStr =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     final timeStr =
-        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+        "${(now.hour % 12 == 0 ? 12 : now.hour % 12).toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
     await db.insert('attendance', {
       'name': person.name,
       'designation': person.designation,
@@ -223,7 +301,7 @@ class MyHomePageState extends State<MyHomePage> {
     final now = DateTime.now();
     final dateStr =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-    
+
     final List<Map<String, dynamic>> maps = await db.query(
       'attendance',
       where: 'name = ? AND date = ?',
@@ -350,90 +428,18 @@ class MyHomePageState extends State<MyHomePage> {
           continue;
         }
 
-        TextEditingController nameController = TextEditingController();
-        TextEditingController designationController = TextEditingController();
-
         if (mounted) {
-          await showDialog(
-            context: this.context,
-            barrierDismissible: false,
-            builder: (BuildContext dialogContext) {
-              return AlertDialog(
-                title: const Text('Enter Details'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Name'),
-                    ),
-                    TextField(
-                      controller: designationController,
-                      decoration:
-                          const InputDecoration(labelText: 'Designation'),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(dialogContext);
-                    },
-                    child: const Text('Cancel'),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      if (nameController.text.isNotEmpty) {
-                        String name = nameController.text.trim();
-
-                        // Check if name already exists
-                        bool nameExists = personList.any((p) => p.name.toLowerCase() == name.toLowerCase());
-                        if (nameExists) {
-                          Fluttertoast.showToast(
-                            msg: "Employee already enrolled with this name!",
-                            toastLength: Toast.LENGTH_SHORT,
-                            gravity: ToastGravity.BOTTOM,
-                            backgroundColor: Colors.red,
-                            textColor: Colors.white,
-                          );
-                          return;
-                        }
-
-                        // Check if face already exists
-                        final prefs = await SharedPreferences.getInstance();
-                        String? identifyThresholdStr = prefs.getString("identify_threshold");
-                        double identifyThreshold = double.parse(identifyThresholdStr ?? "0.8");
-
-                        for (var p in personList) {
-                          double similarity = await _facesdkPlugin.similarityCalculation(
-                                  face['templates'], p.templates) ??
-                              -1;
-                          if (similarity > identifyThreshold) {
-                            Fluttertoast.showToast(
-                              msg: "This face is already enrolled as ${p.name}!",
-                              toastLength: Toast.LENGTH_SHORT,
-                              gravity: ToastGravity.BOTTOM,
-                              backgroundColor: Colors.red,
-                              textColor: Colors.white,
-                            );
-                            return;
-                          }
-                        }
-
-                        Person person = Person(
-                            name: name,
-                            designation: designationController.text,
-                            faceJpg: face['faceJpg'],
-                            templates: face['templates']);
-                        await insertPerson(person);
-                        if (dialogContext.mounted) Navigator.pop(dialogContext);
-                      }
-                    },
-                    child: const Text('Enroll'),
-                  ),
-                ],
-              );
-            },
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StaffEnrollmentView(
+                faceJpg: face['faceJpg'],
+                templates: face['templates'],
+                onEnroll: (person) async {
+                  await insertPerson(person);
+                },
+              ),
+            ),
           );
         }
       }
@@ -470,6 +476,9 @@ class MyHomePageState extends State<MyHomePage> {
 
     return WillPopScope(
       onWillPop: () async {
+        if (widget.role == 'user') {
+          return false;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -478,219 +487,307 @@ class MyHomePageState extends State<MyHomePage> {
                     logAttendance: logAttendance,
                     getLastPunchToday: getLastPunchToday,
                     insertPerson: insertPerson,
+                    role: widget.role,
                   )),
         );
         return false;
       },
       child: Scaffold(
         appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => FaceRecognitionView(
-                          personList: personList,
-                          logAttendance: logAttendance,
-                          getLastPunchToday: getLastPunchToday,
-                          insertPerson: insertPerson,
-                        )),
-              );
-            },
+          automaticallyImplyLeading: false,
+          leading: null,
+          actions: [
+            if (widget.role == 'admin')
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.white),
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginView()),
+                    (route) => false,
+                  );
+                },
+              ),
+          ],
+          title: const Text(
+            'Dashboard',
+            style: TextStyle(
+              letterSpacing: 1,
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+            ),
           ),
-          title: const Text('Face Recognition'),
+          centerTitle: true,
           toolbarHeight: 70,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
         ),
-      body: Container(
-        margin: const EdgeInsets.only(left: 16.0, right: 16.0),
-        child: Column(
-          children: <Widget>[
-            const Card(
-                color: Color.fromARGB(255, 0x49, 0x45, 0x4F),
-                child: ListTile(
-                  leading: Icon(Icons.tips_and_updates),
-                  subtitle: Text(
-                    'KBY-AI offers SDKs for face recognition, liveness detection, and id document recognition.',
-                    style: TextStyle(fontSize: 13),
+        extendBodyBehindAppBar: true,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Theme.of(context).colorScheme.surface,
+                Theme.of(context).colorScheme.surface.withOpacity(0.8),
+              ],
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              children: <Widget>[
+                const SizedBox(height: 100), // Space for AppBar
+
+                // Stats Header
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade900, Colors.blue.shade700],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.3),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                )),
-            const SizedBox(
-              height: 6,
-            ),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  flex: 1,
-                  child: ElevatedButton.icon(
-                      label: const Text('Enroll'),
-                      icon: const Icon(
-                        Icons.person_add,
-                        // color: Colors.white70,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.only(top: 10, bottom: 10),
-                          // foregroundColor: Colors.white70,
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primaryContainer,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(12.0)),
-                          )),
-                      onPressed: enrollPerson),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  flex: 1,
-                  child: ElevatedButton.icon(
-                      label: const Text('Identify'),
-                      icon: const Icon(
-                        Icons.person_search,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.only(top: 10, bottom: 10),
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primaryContainer,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(12.0)),
-                          )),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => FaceRecognitionView(
-                                    personList: personList,
-                                    logAttendance: logAttendance,
-                                    getLastPunchToday: getLastPunchToday,
-                                    insertPerson: insertPerson,
-                                  )),
-                        );
-                      }),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  flex: 1,
-                  child: ElevatedButton.icon(
-                      label: const Text('Settings'),
-                      icon: const Icon(
-                        Icons.settings,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.only(top: 10, bottom: 10),
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primaryContainer,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(12.0)),
-                          )),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => SettingsPage(
-                                    homePageState: this,
-                                  )),
-                        );
-                      }),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  flex: 1,
-                  child: ElevatedButton.icon(
-                      label: const Text('Capture'),
-                      icon: const Icon(
-                        Icons.person_pin,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.only(top: 10, bottom: 10),
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primaryContainer,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(12.0)),
-                          )),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => FaceCaptureView(
-                                    personList: personList,
-                                    insertPerson: insertPerson,
-                                  )),
-                        );
-                      }),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  flex: 1,
-                  child: ElevatedButton.icon(
-                      label: const Text('Attendance History'),
-                      icon: const Icon(
-                        Icons.history,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.only(top: 10, bottom: 10),
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primaryContainer,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(12.0)),
-                          )),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => AttendanceHistoryView()),
-                        );
-                      }),
-                ),
-              ],
-            ),
-            const SizedBox(
-              height: 8,
-            ),
-            Expanded(
-                child: Stack(
-              children: [
-                PersonView(
-                  personList: personList,
-                  homePageState: this,
-                ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Visibility(
-                        visible: _visibleWarning,
-                        child: Container(
-                          width: double.infinity,
-                          height: 40,
-                          color: Colors.redAccent,
-                          child: Center(
-                            child: Text(
-                              _warningState,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 20),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Total Enrolled',
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 16),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${personList.length} Staff',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ))
+                        ],
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.people_outline,
+                            color: Colors.white, size: 30),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Action Grid
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          _buildActionCard(
+                            context,
+                            'Identify',
+                            'Scan & Match',
+                            Icons.person_search_rounded,
+                            Colors.cyan,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => FaceRecognitionView(
+                                          personList: personList,
+                                          logAttendance: logAttendance,
+                                          getLastPunchToday: getLastPunchToday,
+                                          insertPerson: insertPerson,
+                                          role: widget.role,
+                                        )),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          _buildActionCard(
+                            context,
+                            'Capture',
+                            'Quick Scan',
+                            Icons.camera_alt_rounded,
+                            Colors.green,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => FaceCaptureView(
+                                          personList: personList,
+                                          insertPerson: insertPerson,
+                                        )),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 16),
+                          _buildActionCard(
+                            context,
+                            'History',
+                            'Log Records',
+                            Icons.history_rounded,
+                            Colors.purple,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        AttendanceHistoryView()),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => SettingsPage(
+                                      homePageState: this,
+                                    )),
+                          );
+                        },
+                        icon: const Icon(Icons.settings_outlined),
+                        label: const Text('System Settings'),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Recent Staff',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      if (personList.isNotEmpty)
+                        TextButton(
+                          onPressed: deleteAllPerson,
+                          child: const Text('Clear All',
+                              style: TextStyle(color: Colors.redAccent)),
+                        ),
+                    ],
+                  ),
+                ),
+
+                Stack(
+                  children: [
+                    PersonView(
+                      personList: personList,
+                      homePageState: this,
+                    ),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Visibility(
+                            visible: _visibleWarning,
+                            child: Container(
+                              width: double.infinity,
+                              height: 40,
+                              color: Colors.redAccent,
+                              child: Center(
+                                child: Text(
+                                  _warningState,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                              ),
+                            ))
+                      ],
+                    )
                   ],
-                )
+                ),
+                const SizedBox(height: 24), // Bottom padding
               ],
-            )),
-            const SizedBox(height: 4),
-          ],
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  Widget _buildActionCard(BuildContext context, String title, String subtitle,
+      IconData icon, Color color, VoidCallback onTap) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withOpacity(0.2), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                subtitle,
+                style:
+                    TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

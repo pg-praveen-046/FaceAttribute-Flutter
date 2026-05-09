@@ -10,6 +10,7 @@ import 'package:facesdk_plugin/facedetection_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:facesdk_plugin/facesdk_plugin.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'staff_enrollment_view.dart';
 import 'person.dart';
 
 enum ViewMode {
@@ -161,90 +162,6 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
     });
   }
 
-  Future<void> registerFace(BuildContext context) async {
-    TextEditingController nameController = TextEditingController();
-    TextEditingController designationController = TextEditingController();
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Enter Details'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              TextField(
-                controller: designationController,
-                decoration: const InputDecoration(labelText: 'Designation'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close dialog
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                if (nameController.text.isNotEmpty) {
-                  String name = nameController.text.trim();
-                  
-                  // Check if name already exists
-                  bool nameExists = widget.personList.any((p) => p.name.toLowerCase() == name.toLowerCase());
-                  if (nameExists) {
-                    Fluttertoast.showToast(
-                      msg: "Employee already enrolled with this name!",
-                      toastLength: Toast.LENGTH_SHORT,
-                      gravity: ToastGravity.BOTTOM,
-                      backgroundColor: Colors.red,
-                      textColor: Colors.white,
-                    );
-                    return;
-                  }
-
-                  // Check if face already exists
-                  for (var person in widget.personList) {
-                    double similarity = await _facesdkPlugin.similarityCalculation(
-                            _capturedFace['templates'], person.templates) ??
-                        -1;
-                    if (similarity > _identifyThreshold) {
-                      Fluttertoast.showToast(
-                        msg: "This face is already enrolled as ${person.name}!",
-                        toastLength: Toast.LENGTH_SHORT,
-                        gravity: ToastGravity.BOTTOM,
-                        backgroundColor: Colors.red,
-                        textColor: Colors.white,
-                      );
-                      return;
-                    }
-                  }
-
-                  Person person = Person(
-                      name: name,
-                      designation: designationController.text,
-                      faceJpg: _capturedFace['faceJpg'],
-                      templates: _capturedFace['templates']);
-                  await widget.insertPerson(person);
-                  if (context.mounted) {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pop(context, 'OK'); // Pop FaceCaptureView
-                  }
-                }
-              },
-              child: const Text('Enroll'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Future<bool> onFaceDetected(faces) async {
     if (_recognized == true) {
@@ -513,204 +430,212 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
         return true;
       },
       child: Scaffold(
+        backgroundColor: Colors.black,
         appBar: AppBar(
-          title: const Text('Face Recognition'),
-          toolbarHeight: 70,
-          centerTitle: true,
+          title: const Text('Enroll New Face'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            onPressed: () {
+              faceDetectionViewController?.stopCamera();
+              Navigator.pop(context);
+            },
+          ),
         ),
+        extendBodyBehindAppBar: true,
         body: Stack(
           children: <Widget>[
             FaceCaptureDetectionView(faceRecognitionViewState: this),
-            Visibility(
-                visible: _viewMode == ViewMode.NO_FACE_PREPARE,
-                child: SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: CaptureView(
-                      animateStart: 1.4,
-                      animateEnd: 0.88,
-                      duration: 800,
-                      repeat: false,
-                      viewMode: _viewMode,
-                      setViewMode: setViewMode,
-                      currentFace: _currentFace,
-                    ))),
-            Visibility(
-                visible: _viewMode == ViewMode.REPEAT_NO_FACE_PREPARE,
-                child: SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: CaptureView(
-                      animateStart: 0.88,
-                      animateEnd: 0.92,
-                      duration: 1300,
-                      repeat: true,
-                      viewMode: _viewMode,
-                      setViewMode: setViewMode,
-                      currentFace: _currentFace,
-                    ))),
-            Visibility(
-                visible: _viewMode == ViewMode.TO_FACE_CIRCLE,
-                child: SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: CaptureView(
-                      animateStart: 1.4,
-                      animateEnd: 0,
-                      duration: 800,
-                      repeat: false,
-                      viewMode: _viewMode,
-                      setViewMode: setViewMode,
-                      currentFace: _currentFace,
-                    ))),
-            Visibility(
-                visible: _viewMode == ViewMode.FACE_CIRCLE,
-                child: SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: CaptureView(
-                      animateStart: 0,
-                      animateEnd: 0,
-                      duration: 0,
-                      repeat: false,
-                      viewMode: _viewMode,
-                      setViewMode: setViewMode,
-                      currentFace: _currentFace,
-                    ))),
-            Visibility(
-                visible: _viewMode == ViewMode.FACE_CIRCLE_TO_NO_FACE,
-                child: SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: CaptureView(
-                      animateStart: 0,
-                      animateEnd: 1.0,
-                      duration: 600,
-                      repeat: false,
-                      viewMode: _viewMode,
-                      setViewMode: setViewMode,
-                      currentFace: _currentFace,
-                    ))),
-            Visibility(
-                visible: _viewMode == ViewMode.FACE_CAPTURE_PREPARE,
-                child: SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: CaptureView(
-                      animateStart: 0,
-                      animateEnd: 1.0,
-                      duration: 500,
-                      repeat: false,
-                      viewMode: _viewMode,
-                      setViewMode: setViewMode,
-                      currentFace: _capturedFace,
-                    ))),
-            Visibility(
-                visible: _viewMode.index >= ViewMode.FACE_CAPTURE_DONE.index,
-                child: SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: CaptureView(
-                      animateStart: 0,
-                      animateEnd: 1.0,
-                      duration: 500,
-                      repeat: false,
-                      viewMode: _viewMode,
-                      setViewMode: setViewMode,
-                      currentFace: _capturedImage,
-                    ))),
+            
+            // Scanner Overlays based on ViewMode
+            ..._buildCaptureOverlays(),
+
+            // Top Status/Warning Bar
             if (_warningTxt.isNotEmpty)
               Positioned(
-                top: 100,
-                left: 20,
-                right: 20,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.redAccent, width: 2),
-                    ),
-                    child: Text(
-                      _warningTxt,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                top: 120,
+                left: 24,
+                right: 24,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _warningTxt,
+                          style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
-            Visibility(
-                visible:
-                    _viewMode.index == ViewMode.FACE_CAPTURE_FINISHED.index,
-                child: Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        const SizedBox(
-                          height: 400,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                            ),
-                            Text(
-                              _capturedLiveness,
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                            ),
-                            Text(
-                              _capturedQuality,
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                            ),
-                            Text(
-                              _capturedLuminance,
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 16,
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primaryContainer,
-                          ),
-                          onPressed: () => registerFace(context),
-                          child: const Text('Enroll'),
-                        ),
-                      ]),
-                )),
+
+            // Success / Enrollment UI
+            if (_viewMode == ViewMode.FACE_CAPTURE_FINISHED)
+              _buildSuccessOverlay(),
           ],
         ),
       ),
+    );
+  }
+
+  List<Widget> _buildCaptureOverlays() {
+    return [
+      Visibility(
+        visible: _viewMode == ViewMode.NO_FACE_PREPARE,
+        child: _buildCaptureView(1.4, 0.88, 800, false),
+      ),
+      Visibility(
+        visible: _viewMode == ViewMode.REPEAT_NO_FACE_PREPARE,
+        child: _buildCaptureView(0.88, 0.92, 1300, true),
+      ),
+      Visibility(
+        visible: _viewMode == ViewMode.TO_FACE_CIRCLE,
+        child: _buildCaptureView(1.4, 0, 800, false),
+      ),
+      Visibility(
+        visible: _viewMode == ViewMode.FACE_CIRCLE,
+        child: _buildCaptureView(0, 0, 0, false),
+      ),
+      Visibility(
+        visible: _viewMode == ViewMode.FACE_CIRCLE_TO_NO_FACE,
+        child: _buildCaptureView(0, 1.0, 600, false),
+      ),
+      Visibility(
+        visible: _viewMode == ViewMode.FACE_CAPTURE_PREPARE,
+        child: _buildCaptureView(0, 1.0, 500, false, face: _capturedFace),
+      ),
+      Visibility(
+        visible: _viewMode.index >= ViewMode.FACE_CAPTURE_DONE.index,
+        child: _buildCaptureView(0, 1.0, 500, false, face: _capturedImage),
+      ),
+    ];
+  }
+
+  Widget _buildCaptureView(double start, double end, int duration, bool repeat, {dynamic face}) {
+    return SizedBox.expand(
+      child: CaptureView(
+        animateStart: start,
+        animateEnd: end,
+        duration: duration,
+        repeat: repeat,
+        viewMode: _viewMode,
+        setViewMode: setViewMode,
+        currentFace: face ?? _currentFace,
+      ),
+    );
+  }
+
+  Widget _buildSuccessOverlay() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black.withOpacity(0.85),
+      padding: const EdgeInsets.all(24),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white10),
+                boxShadow: [BoxShadow(color: Colors.indigoAccent.withOpacity(0.2), blurRadius: 40, spreadRadius: 5)],
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 64),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Capture Success",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1, color: Colors.white),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildQualityRow(Icons.security, "Liveness", _capturedLiveness.split('=').last.trim()),
+                  _buildQualityRow(Icons.high_quality, "Quality", _capturedQuality.split('=').last.trim()),
+                  _buildQualityRow(Icons.wb_sunny, "Lighting", _capturedLuminance.split(':').last.trim()),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => registerFace(context),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text("Enroll Staff", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setViewMode(ViewMode.NO_FACE_PREPARE);
+                      faceDetectionViewController?.startCamera(1);
+                    },
+                    child: const Text("Retake Photo", style: TextStyle(color: Colors.white38)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQualityRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white38, size: 18),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: Colors.white38)),
+          const Spacer(),
+          Text(value, style: const TextStyle(color: Colors.indigoAccent, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  // Redesign the Register Face Dialog
+  Future<void> registerFace(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StaffEnrollmentView(
+          faceJpg: _capturedFace['faceJpg'],
+          templates: _capturedFace['templates'],
+          onEnroll: (person) async {
+            await widget.insertPerson(person);
+          },
+        ),
+      ),
+    );
+    if (context.mounted) {
+      Navigator.pop(context, 'OK');
+    }
+  }
+
+  InputDecoration _dialogInputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: Colors.indigoAccent),
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.05),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      labelStyle: const TextStyle(color: Colors.white38),
     );
   }
 }

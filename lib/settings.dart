@@ -173,127 +173,233 @@ class SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0F0F0F),
       appBar: AppBar(
-        title: const Text('Settings'),
-        toolbarHeight: 70,
-        centerTitle: true,
+        title: const Text('System Settings'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: SettingsList(
-        sections: [
-          SettingsSection(
-            title: const Text('Camera Lens'),
-            tiles: <SettingsTile>[
-              SettingsTile.switchTile(
-                onToggle: (value) {
-                  updateCameraLens(value);
-                },
-                initialValue: _cameraLens,
-                leading: const Icon(Icons.camera),
-                title: const Text('Front'),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            _buildSectionHeader('General Configuration'),
+            _buildSettingsCard([
+              _buildSwitchTile(
+                'Front Camera',
+                'Toggle front/back camera',
+                Icons.camera_front_rounded,
+                _cameraLens,
+                (value) => updateCameraLens(value),
               ),
-            ],
+            ]),
+            const SizedBox(height: 24),
+            _buildSectionHeader('Recognition Thresholds'),
+            _buildSettingsCard([
+              _buildNavigationTile(
+                'Liveness Level',
+                _livenessLevelNames[_selectedLivenessLevel],
+                Icons.security_rounded,
+                Colors.orangeAccent,
+                () => _showLivenessPicker(),
+              ),
+              const Divider(height: 1, color: Colors.white10),
+              _buildNavigationTile(
+                'Liveness Threshold',
+                _livenessThreshold,
+                Icons.radar_rounded,
+                Colors.cyanAccent,
+                () => _showThresholdDialog('Liveness Threshold', livenessController, () => updateLivenessThreshold(context)),
+              ),
+              const Divider(height: 1, color: Colors.white10),
+              _buildNavigationTile(
+                'Identify Threshold',
+                _identifyThreshold,
+                Icons.face_retouching_natural_rounded,
+                Colors.indigoAccent,
+                () => _showThresholdDialog('Identify Threshold', identifyController, () => updateIdentifyThreshold(context)),
+              ),
+            ]),
+            const SizedBox(height: 24),
+            _buildSectionHeader('Data Management'),
+            _buildSettingsCard([
+              _buildNavigationTile(
+                'Restore Defaults',
+                'Reset all system values',
+                Icons.settings_backup_restore_rounded,
+                Colors.amberAccent,
+                () => restoreSettings(),
+              ),
+              const Divider(height: 1, color: Colors.white10),
+              _buildNavigationTile(
+                'Clear Database',
+                'Delete all enrolled persons',
+                Icons.delete_sweep_rounded,
+                Colors.redAccent,
+                () => widget.homePageState.deleteAllPerson(),
+              ),
+            ]),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
+            color: Colors.white.withOpacity(0.4),
           ),
-          SettingsSection(
-            title: const Text('Thresholds'),
-            tiles: <SettingsTile>[
-              SettingsTile.navigation(
-                title: const Text('Liveness Level'),
-                value: Text(_livenessLevelNames[_selectedLivenessLevel]),
-                leading: const Icon(Icons.person_pin_outlined),
-                onPressed: (value) => _showDialog(
-                  CupertinoPicker(
-                    magnification: 1.22,
-                    squeeze: 1.2,
-                    useMagnifier: true,
-                    itemExtent: _kItemExtent,
-                    // This sets the initial item.
-                    scrollController: FixedExtentScrollController(
-                      initialItem: _selectedLivenessLevel,
-                    ),
-                    // This is called when selected item is changed.
-                    onSelectedItemChanged: (int selectedItem) {
-                      setState(() {
-                        _selectedLivenessLevel = selectedItem;
-                      });
-                      updateLivenessLevel(selectedItem);
-                    },
-                    children: List<Widget>.generate(_livenessLevelNames.length,
-                        (int index) {
-                      return Center(child: Text(_livenessLevelNames[index]));
-                    }),
-                  ),
-                ),
-              ),
-              SettingsTile.navigation(
-                title: const Text('Liveness Threshold'),
-                value: Text(_livenessThreshold),
-                leading: const Icon(Icons.person_pin_outlined),
-                onPressed: (value) => showDialog<String>(
-                  context: context,
-                  builder: (BuildContext context) => AlertDialog(
-                    title: const Text('Liveness Threshold'),
-                    content: TextField(
-                      controller: livenessController,
-                      onChanged: (value) => {},
-                    ),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, 'Cancel'),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => updateLivenessThreshold(context),
-                        child: const Text('OK'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SettingsTile.navigation(
-                title: const Text('Identify Threshold'),
-                leading: const Icon(Icons.person_search),
-                value: Text(_identifyThreshold),
-                onPressed: (value) => showDialog<String>(
-                  context: context,
-                  builder: (BuildContext context) => AlertDialog(
-                    title: const Text('Identify Threshold'),
-                    content: TextField(
-                      controller: identifyController,
-                      onChanged: (value) => {},
-                    ),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, 'Cancel'),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => updateIdentifyThreshold(context),
-                        child: const Text('OK'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SettingsSection(
-            title: const Text('Reset'),
-            tiles: <SettingsTile>[
-              SettingsTile.navigation(
-                title: const Text('Restore default settings'),
-                leading: const Icon(Icons.restore),
-                onPressed: (value) => restoreSettings(),
-              ),
-              SettingsTile.navigation(
-                title: const Text('Clear all person'),
-                leading: const Icon(Icons.clear_all),
-                onPressed: (value) {
-                  widget.homePageState.deleteAllPerson();
-                },
-              ),
-            ],
-          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard(List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildSwitchTile(String title, String subtitle, IconData icon, bool value, Function(bool) onChanged) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+        child: Icon(icon, color: Colors.blueAccent),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4))),
+      trailing: CupertinoSwitch(
+        value: value,
+        activeColor: Colors.indigoAccent,
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildNavigationTile(String title, String value, IconData icon, Color color, VoidCallback onTap) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+        child: Icon(icon, color: color),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14)),
+          const SizedBox(width: 8),
+          Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white.withOpacity(0.2)),
         ],
+      ),
+    );
+  }
+
+  void _showLivenessPicker() {
+    _showDialog(
+      CupertinoPicker(
+        magnification: 1.22,
+        squeeze: 1.2,
+        useMagnifier: true,
+        itemExtent: _kItemExtent,
+        scrollController: FixedExtentScrollController(initialItem: _selectedLivenessLevel),
+        onSelectedItemChanged: (int selectedItem) {
+          setState(() => _selectedLivenessLevel = selectedItem);
+          updateLivenessLevel(selectedItem);
+        },
+        children: List<Widget>.generate(_livenessLevelNames.length, (int index) {
+          return Center(child: Text(_livenessLevelNames[index], style: const TextStyle(color: Colors.white)));
+        }),
+      ),
+    );
+  }
+
+  void _showThresholdDialog(String title, TextEditingController controller, VoidCallback onSave) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.indigoAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.tune_rounded, color: Colors.indigoAccent, size: 32),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Enter value (0.0 - 1.0)',
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: onSave,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigoAccent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
