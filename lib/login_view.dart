@@ -32,20 +32,21 @@ class _LoginViewState extends State<LoginView> {
           content: const Text('Please enter username and password'),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-    
+
     // Simulate a brief loading state for "premium" feel
     await Future.delayed(const Duration(milliseconds: 1500));
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
-      
+
       String role = '';
       if (username == 'admin' && password == 'admin') {
         role = 'admin';
@@ -54,10 +55,12 @@ class _LoginViewState extends State<LoginView> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Invalid credentials. Use admin/admin or user/user'),
+            content:
+                const Text('Invalid credentials. Use admin/admin or user/user'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         return;
@@ -110,7 +113,7 @@ class _LoginViewState extends State<LoginView> {
               ),
             ),
           ),
-          
+
           // Main Content
           SafeArea(
             child: Center(
@@ -150,7 +153,7 @@ class _LoginViewState extends State<LoginView> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    
+
                     // Welcome Text
                     const Text(
                       'Access Portal',
@@ -171,7 +174,7 @@ class _LoginViewState extends State<LoginView> {
                       ),
                     ),
                     const SizedBox(height: 48),
-                    
+
                     // Login Card
                     ClipRRect(
                       borderRadius: BorderRadius.circular(28),
@@ -202,7 +205,8 @@ class _LoginViewState extends State<LoginView> {
                                 isPassword: true,
                                 isVisible: _isPasswordVisible,
                                 onToggleVisibility: () {
-                                  setState(() => _isPasswordVisible = !_isPasswordVisible);
+                                  setState(() =>
+                                      _isPasswordVisible = !_isPasswordVisible);
                                 },
                               ),
                               const SizedBox(height: 32),
@@ -225,7 +229,9 @@ class _LoginViewState extends State<LoginView> {
                                           width: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    Colors.white),
                                           ),
                                         )
                                       : const Text(
@@ -291,7 +297,9 @@ class _LoginViewState extends State<LoginView> {
               suffixIcon: isPassword
                   ? IconButton(
                       icon: Icon(
-                        isVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        isVisible
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
                         color: Colors.white.withOpacity(0.3),
                         size: 20,
                       ),
@@ -299,7 +307,8 @@ class _LoginViewState extends State<LoginView> {
                     )
                   : null,
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
             ),
           ),
         ),

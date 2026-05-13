@@ -46,16 +46,18 @@ const double DEFAULT_EYECLOSE_THRESHOLD = 0.5;
 const double DEFAULT_MOUTHOPEN_THRESHOLD = 0.5;
 
 Float32List byteArrayToFloatArray(Uint8List byteArray) {
-   // Create a Float32List with half the length of the byteArray
-   Float32List floatArray = Float32List(byteArray.length ~/ Float32List.bytesPerElement);
+  // Create a Float32List with half the length of the byteArray
+  Float32List floatArray =
+      Float32List(byteArray.length ~/ Float32List.bytesPerElement);
 
-   // Iterate over the byteArray and convert each pair of bytes to a float value
-   for (int i = 0; i < byteArray.length; i += Float32List.bytesPerElement) {
-     // Convert bytes to a 32-bit floating point value
-     floatArray[i ~/ Float32List.bytesPerElement] = byteArray.buffer.asFloat32List()[i ~/ Float32List.bytesPerElement];
-   }
+  // Iterate over the byteArray and convert each pair of bytes to a float value
+  for (int i = 0; i < byteArray.length; i += Float32List.bytesPerElement) {
+    // Convert bytes to a 32-bit floating point value
+    floatArray[i ~/ Float32List.bytesPerElement] =
+        byteArray.buffer.asFloat32List()[i ~/ Float32List.bytesPerElement];
+  }
 
-   return floatArray;
+  return floatArray;
 }
 
 Rect getROIRect(Size frameSize) {
@@ -161,7 +163,6 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
       _identifyThreshold = double.parse(identifyThreshold ?? "0.8");
     });
   }
-
 
   Future<bool> onFaceDetected(faces) async {
     if (_recognized == true) {
@@ -351,7 +352,7 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
     try {
       if (Platform.isAndroid) {
         List landmarks_68 = face['landmarks_68'];
-    
+
         for (int i = 0; i < 68; i++) {
           faceLeft =
               faceLeft < landmarks_68[i * 2] ? faceLeft : landmarks_68[i * 2];
@@ -362,8 +363,9 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
               : landmarks_68[i * 2 + 1];
         }
       } else {
-        List landmarks_68 = byteArrayToFloatArray(Uint8List.fromList(face['landmarks_68']));
-    
+        List landmarks_68 =
+            byteArrayToFloatArray(Uint8List.fromList(face['landmarks_68']));
+
         for (int i = 0; i < 68; i++) {
           faceLeft =
               faceLeft < landmarks_68[i * 2] ? faceLeft : landmarks_68[i * 2];
@@ -371,10 +373,9 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
               faceRight > landmarks_68[i * 2] ? faceRight : landmarks_68[i * 2];
           faceBottom = faceBottom > landmarks_68[i * 2 + 1]
               ? faceBottom
-              : landmarks_68[i * 2 + 1];      
+              : landmarks_68[i * 2 + 1];
         }
       }
-
     } catch (e) {}
 
     const double sizeRate = 0.30;
@@ -447,7 +448,7 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
         body: Stack(
           children: <Widget>[
             FaceCaptureDetectionView(faceRecognitionViewState: this),
-            
+
             // Scanner Overlays based on ViewMode
             ..._buildCaptureOverlays(),
 
@@ -458,20 +459,26 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
                 left: 24,
                 right: 24,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.7),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                    border:
+                        Border.all(color: Colors.redAccent.withOpacity(0.5)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
+                      const Icon(Icons.warning_amber_rounded,
+                          color: Colors.redAccent, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _warningTxt,
-                          style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                          style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
                         ),
                       ),
                     ],
@@ -521,7 +528,8 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
     ];
   }
 
-  Widget _buildCaptureView(double start, double end, int duration, bool repeat, {dynamic face}) {
+  Widget _buildCaptureView(double start, double end, int duration, bool repeat,
+      {dynamic face}) {
     return SizedBox.expand(
       child: CaptureView(
         animateStart: start,
@@ -551,20 +559,33 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
                 color: const Color(0xFF1E1E1E),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(color: Colors.white10),
-                boxShadow: [BoxShadow(color: Colors.indigoAccent.withOpacity(0.2), blurRadius: 40, spreadRadius: 5)],
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.indigoAccent.withOpacity(0.2),
+                      blurRadius: 40,
+                      spreadRadius: 5)
+                ],
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 64),
+                  const Icon(Icons.check_circle_rounded,
+                      color: Colors.greenAccent, size: 64),
                   const SizedBox(height: 16),
                   const Text(
                     "Capture Success",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1, color: Colors.white),
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                        color: Colors.white),
                   ),
                   const SizedBox(height: 24),
-                  _buildQualityRow(Icons.security, "Liveness", _capturedLiveness.split('=').last.trim()),
-                  _buildQualityRow(Icons.high_quality, "Quality", _capturedQuality.split('=').last.trim()),
-                  _buildQualityRow(Icons.wb_sunny, "Lighting", _capturedLuminance.split(':').last.trim()),
+                  _buildQualityRow(Icons.security, "Liveness",
+                      _capturedLiveness.split('=').last.trim()),
+                  _buildQualityRow(Icons.high_quality, "Quality",
+                      _capturedQuality.split('=').last.trim()),
+                  _buildQualityRow(Icons.wb_sunny, "Lighting",
+                      _capturedLuminance.split(':').last.trim()),
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
@@ -572,9 +593,12 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
                       onPressed: () => registerFace(context),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: const Text("Enroll Staff", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      child: const Text("Enroll Staff",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
                   ),
                   TextButton(
@@ -582,7 +606,8 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
                       setViewMode(ViewMode.NO_FACE_PREPARE);
                       faceDetectionViewController?.startCamera(1);
                     },
-                    child: const Text("Retake Photo", style: TextStyle(color: Colors.white38)),
+                    child: const Text("Retake Photo",
+                        style: TextStyle(color: Colors.white38)),
                   ),
                 ],
               ),
@@ -603,7 +628,9 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
           const SizedBox(width: 12),
           Text(label, style: const TextStyle(color: Colors.white38)),
           const Spacer(),
-          Text(value, style: const TextStyle(color: Colors.indigoAccent, fontWeight: FontWeight.bold)),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.indigoAccent, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -634,7 +661,8 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
       prefixIcon: Icon(icon, color: Colors.indigoAccent),
       filled: true,
       fillColor: Colors.white.withOpacity(0.05),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
       labelStyle: const TextStyle(color: Colors.white38),
     );
   }

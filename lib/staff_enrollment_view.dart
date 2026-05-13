@@ -95,13 +95,17 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
               const SizedBox(height: 32),
 
               _buildSectionHeader('Personal Information'),
-              _buildTextField(_nameController, 'Full Name', Icons.person_outline,
+              _buildTextField(
+                  _nameController, 'Full Name', Icons.person_outline,
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Name is required' : null),
-              _buildTextField(_designationController, 'Designation', Icons.work_outline),
-              _buildTextField(_emailController, 'Email Address', Icons.email_outlined,
+              _buildTextField(
+                  _designationController, 'Designation', Icons.work_outline),
+              _buildTextField(
+                  _emailController, 'Email Address', Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress),
-              _buildTextField(_contactController, 'Contact Number', Icons.phone_outlined,
+              _buildTextField(
+                  _contactController, 'Contact Number', Icons.phone_outlined,
                   keyboardType: TextInputType.phone),
 
               const SizedBox(height: 24),
@@ -109,11 +113,13 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildTimeTile('In Time', _inTime, () => _selectTime(context, true)),
+                    child: _buildTimeTile(
+                        'In Time', _inTime, () => _selectTime(context, true)),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildTimeTile('Out Time', _outTime, () => _selectTime(context, false)),
+                    child: _buildTimeTile('Out Time', _outTime,
+                        () => _selectTime(context, false)),
                   ),
                 ],
               ),
@@ -141,10 +147,12 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.indigoAccent,
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                   child: const Text('Complete Enrollment',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -169,7 +177,8 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
+  Widget _buildTextField(
+      TextEditingController controller, String label, IconData icon,
       {TextInputType? keyboardType, String? Function(String?)? validator}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -205,15 +214,19 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
+            Text(label,
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.4), fontSize: 12)),
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.access_time, size: 18, color: Colors.indigoAccent),
+                const Icon(Icons.access_time,
+                    size: 18, color: Colors.indigoAccent),
                 const SizedBox(width: 8),
                 Text(
                   _formatTimeOfDay(time),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ],
             ),

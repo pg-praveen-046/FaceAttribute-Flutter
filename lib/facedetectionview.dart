@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -247,13 +248,29 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
             _faces = null;
           });
         } else {
-          // Subsequent scan - Out Request (OUT)
-          setState(() {
-            _recognized = true;
-            _showOutRequest = true;
-            _faces = null;
-          });
-          startOutRequestTimer();
+          // Subsequent scan - Check if coming back from break (IN) or going on break (OUT)
+          if (lastPunch != null && lastPunch['type'] == 'OUT') {
+            _currentPunchType = "IN";
+            _currentPunchRemark = "Back from ${lastPunch['remark']?.replaceAll('OUT for ', '') ?? 'Break'}";
+            
+            if (widget.logAttendance != null) {
+              widget.logAttendance!(_lastMatchedPerson!, type: "IN", remark: _currentPunchRemark);
+            }
+            
+            setState(() {
+              _recognized = true;
+              _showWelcomeCard = true;
+              _showOutRequest = false;
+              _faces = null;
+            });
+          } else {
+            setState(() {
+              _recognized = true;
+              _showOutRequest = true;
+              _faces = null;
+            });
+            startOutRequestTimer();
+          }
         }
       } else {
         setState(() {
@@ -456,58 +473,133 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
         return true;
       },
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.black87, Colors.transparent],
-              ),
-            ),
-          ),
-          automaticallyImplyLeading: false,
-          leading: widget.role == 'user'
-              ? null
-              : IconButton(
-                  icon: const Icon(Icons.menu, color: Colors.white),
-                  onPressed: () {
-                    faceDetectionViewController?.stopCamera();
-                    Navigator.pop(context);
-                  },
-                ),
-          actions: [
-            if (widget.role == 'user')
-              IconButton(
-                icon: const Icon(Icons.logout, color: Colors.white),
-                onPressed: () {
-                  faceDetectionViewController?.stopCamera();
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginView()),
-                    (route) => false,
-                  );
-                },
-              ),
-          ],
-          title: const Text(
-            'Face Scanner',
-            style: TextStyle(
-              letterSpacing: 1,
-              fontWeight: FontWeight.w900,
-              fontSize: 20,
-              color: Colors.white,
-            ),
-          ),
-          toolbarHeight: 70,
-          centerTitle: true,
-        ),
-        extendBodyBehindAppBar: true,
+        backgroundColor: const Color(0xFF0D1117), // Portal Navy
         body: Stack(
           children: <Widget>[
+            // Decorative Corner Blobs (Portal Style)
+            Positioned(
+              top: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF161B22).withOpacity(0.3),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -150,
+              left: -150,
+              child: Container(
+                width: 400,
+                height: 400,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF161B22).withOpacity(0.2),
+                ),
+              ),
+            ),
+
             FaceDetectionView(faceRecognitionViewState: this),
+
+            // Portal Header (Time & Status)
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "11:22 AM",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            const Icon(Icons.wifi, size: 16, color: Colors.white),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.battery_full, size: 16, color: Colors.white),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    const Text(
+                      'Face Scanner',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Position your face within the frame',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Back/Menu Buttons (Floating)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 110,
+              left: 20,
+              child: widget.role == 'user'
+                  ? const SizedBox()
+                  : IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new,
+                            color: Colors.white, size: 18),
+                      ),
+                      onPressed: () {
+                        faceDetectionViewController?.stopCamera();
+                        Navigator.pop(context);
+                      },
+                    ),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 110,
+              right: 20,
+              child: widget.role != 'user'
+                  ? const SizedBox()
+                  : IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.logout_rounded,
+                            color: Colors.white, size: 18),
+                      ),
+                      onPressed: () {
+                        faceDetectionViewController?.stopCamera();
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LoginView()),
+                          (route) => false,
+                        );
+                      },
+                    ),
+            ),
 
             // Scanner Overlay Frame
             IgnorePointer(
@@ -682,41 +774,29 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                 ),
               ),
 
-            // Out Request Purpose Dialog
+            // Out Request Purpose Dialog (Matched to Image)
             if (_showOutRequest)
-              Container(
-                color: Colors.black.withOpacity(0.7),
-                child: Center(
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.85,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                          color: Colors.redAccent.withOpacity(0.5), width: 1),
-                    ),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: IconButton(
-                            icon:
-                                const Icon(Icons.close, color: Colors.white54),
-                            onPressed: () {
-                              setState(() {
-                                _showOutRequest = false;
-                                _recognized = false;
-                                _countdownTimer?.cancel();
-                              });
-                            },
-                          ),
-                        ),
-                        Column(
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  color: Colors.black.withOpacity(0.8),
+                  child: Center(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.95,
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D1117), // Deep Portal Navy
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 20)
+                        ],
+                      ),
+                      child: SingleChildScrollView(
+                        child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const SizedBox(height: 12),
                             const Text(
                               "Out Request Purpose",
                               style: TextStyle(
@@ -725,114 +805,168 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                                   color: Colors.white),
                             ),
                             const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.access_time,
-                                    size: 18, color: Colors.white70),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    "Next face attendance check in: ${_outRequestTimer}s",
-                                    style: const TextStyle(
-                                        fontSize: 14, color: Colors.white70),
-                                    textAlign: TextAlign.center,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF161B22),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.history_toggle_off, size: 14, color: Colors.blueAccent),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Next scan in: ",
+                                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6)),
                                   ),
-                                ),
-                              ],
+                                  Text(
+                                    "${_outRequestTimer}s",
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blueAccent),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 32),
+                            const SizedBox(height: 24),
                             GridView.count(
                               shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
                               crossAxisCount: 2,
-                              crossAxisSpacing: 16,
-                              mainAxisSpacing: 16,
-                              childAspectRatio: 2.2,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                              childAspectRatio: 2.5,
                               children: [
-                                _buildPurposeButton(
-                                    "Tea", Icons.coffee, Colors.blue),
-                                _buildPurposeButton(
-                                    "Lunch", Icons.restaurant, Colors.green),
-                                _buildPurposeButton(
-                                    "Bank", Icons.account_balance, Colors.cyan),
-                                _buildPurposeButton(
-                                    "Others", Icons.more_horiz, Colors.orange),
+                                _buildImageStyleButton("Tea", Icons.coffee, const Color(0xFF2962FF)),
+                                _buildImageStyleButton("Lunch", Icons.restaurant, const Color(0xFF2962FF)),
+                                _buildImageStyleButton("Bank", Icons.account_balance, const Color(0xFF2962FF)),
+                                _buildImageStyleButton("Others", Icons.more_horiz, const Color(0xFF2962FF)),
                               ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
 
-            // Welcome / Success Card
+            // Welcome / Success Card (Modern Portal Style)
             if (_showWelcomeCard && _lastMatchedPerson != null)
-              Container(
-                color: Colors.black.withOpacity(0.8),
-                child: Center(
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.9,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          "Welcome",
-                          style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87),
-                        ),
-                        Text(
-                          _lastMatchedPerson!.name,
-                          style: const TextStyle(
-                              fontSize: 22,
-                              color: Color(0xFF673AB7),
-                              fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 20),
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundImage:
-                              MemoryImage(_lastMatchedPerson!.faceJpg),
-                        ),
-                        const SizedBox(height: 30),
-                        _buildDetailRow("Designation:", _lastMatchedPerson!.designation),
-                        _buildDetailRow("Email:", _lastMatchedPerson!.email),
-                        _buildDetailRow("Phone:", _lastMatchedPerson!.contact),
-                        _buildDetailRow("Punch Time:", _currentPunchTime,
-                            valueColor: Colors.green),
-                        _buildDetailRow("Entry Type:", _currentPunchType),
-                        _buildDetailRow("Remark:", _currentPunchRemark,
-                            valueColor: Colors.black54),
-                        const SizedBox(height: 30), 
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _showWelcomeCard = false;
-                                _recognized = false;
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  color: Colors.black.withOpacity(0.9),
+                  child: Center(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.95,
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D1117),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 20),
+                            // Profile with Portal guide
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: const Color(0xFF00F2FF), width: 2),
+                                    boxShadow: [
+                                      BoxShadow(color: const Color(0xFF00F2FF).withOpacity(0.2), blurRadius: 10)
+                                    ],
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 48,
+                                    backgroundColor: Colors.black,
+                                    backgroundImage: MemoryImage(_lastMatchedPerson!.faceJpg),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(color: Color(0xFF00F2FF), shape: BoxShape.circle),
+                                    child: const Icon(Icons.check, size: 14, color: Colors.black),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: const Text("Done",
-                                style: TextStyle(
-                                    fontSize: 18, color: Colors.white)),
-                          ),
+                            const SizedBox(height: 16),
+                            const Text("Identity Verified", style: TextStyle(color: Color(0xFF00F2FF), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                            Text(_lastMatchedPerson!.name, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
+                            const SizedBox(height: 8),
+                            // Status Pill
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _currentPunchType == "OUT" ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: (_currentPunchType == "OUT" ? Colors.red : Colors.green).withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                "$_currentPunchType — ${_currentPunchRemark.replaceAll('OUT for ', '')}",
+                                style: TextStyle(color: _currentPunchType == "OUT" ? Colors.redAccent : Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            // Info List
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF161B22),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Column(
+                                children: [
+                                  _buildImageStyleRow(Icons.work_outline, "Designation", _lastMatchedPerson!.designation),
+                                  _buildImageStyleRow(Icons.alternate_email, "Email", _lastMatchedPerson!.email),
+                                  _buildImageStyleRow(Icons.phone_android, "Phone", _lastMatchedPerson!.contact),
+                                  _buildImageStyleRow(Icons.schedule, "Punch Time", _currentPunchTime, valueColor: Colors.blueAccent),
+                                  _buildImageStyleRow(Icons.sync_alt, "Entry Type", _currentPunchType),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            // Done Button (Portal Blue)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 54,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _showWelcomeCard = false;
+                                      _recognized = false;
+                                    });
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF2962FF),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text("Confirm & Continue", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -844,29 +978,27 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
   }
 
   Widget _buildScannerCorner(Alignment alignment) {
-    bool isLeft =
-        alignment == Alignment.topLeft || alignment == Alignment.bottomLeft;
-    bool isTop =
-        alignment == Alignment.topLeft || alignment == Alignment.topRight;
+    bool isLeft = alignment == Alignment.topLeft || alignment == Alignment.bottomLeft;
+    bool isTop = alignment == Alignment.topLeft || alignment == Alignment.topRight;
 
     return Align(
       alignment: alignment,
       child: Container(
-        width: 30,
-        height: 30,
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
           border: Border(
             top: isTop
-                ? const BorderSide(color: Colors.cyanAccent, width: 4)
+                ? const BorderSide(color: Color(0xFF2962FF), width: 3)
                 : BorderSide.none,
             bottom: !isTop
-                ? const BorderSide(color: Colors.cyanAccent, width: 4)
+                ? const BorderSide(color: Color(0xFF2962FF), width: 3)
                 : BorderSide.none,
             left: isLeft
-                ? const BorderSide(color: Colors.cyanAccent, width: 4)
+                ? const BorderSide(color: Color(0xFF2962FF), width: 3)
                 : BorderSide.none,
             right: !isLeft
-                ? const BorderSide(color: Colors.cyanAccent, width: 4)
+                ? const BorderSide(color: Color(0xFF2962FF), width: 3)
                 : BorderSide.none,
           ),
         ),
@@ -874,50 +1006,58 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
     );
   }
 
-  Widget _buildPurposeButton(String title, IconData icon, Color color) {
+  Widget _buildImageStyleButton(String title, IconData icon, Color color) {
     return InkWell(
       onTap: () => selectOutPurpose(title),
       child: Container(
         decoration: BoxDecoration(
+          color: const Color(0xFF161B22),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.6), width: 1.5),
+          border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
-            Text(title,
-                style: TextStyle(
-                    color: color, fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(width: 12),
+            Icon(icon, color: Colors.blueAccent, size: 18),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
+  Widget _buildImageStyleRow(IconData icon, String label, String value,
+      {Color? valueColor, bool isLast = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 110,
-            child: Text(label,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87)),
-          ),
+          Icon(icon, size: 18, color: Colors.white.withOpacity(0.4)),
+          const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                  fontSize: 16,
-                  color: valueColor ?? Colors.black54,
-                  fontWeight:
-                      valueColor != null ? FontWeight.bold : FontWeight.normal),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.5)),
+                ),
+                Text(
+                  value.isEmpty ? "N/A" : value,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: valueColor ?? Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         ],
