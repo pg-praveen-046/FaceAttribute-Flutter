@@ -1,6 +1,8 @@
 // ignore_for_file: depend_on_referenced_packages
 
+import 'package:facerecognition_flutter/EmployeeListView.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:facesdk_plugin/facesdk_plugin.dart';
@@ -98,7 +100,6 @@ class MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-
     init();
   }
 
@@ -151,9 +152,6 @@ class MyHomePageState extends State<MyHomePage> {
       });
     } catch (e) {}
 
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
     if (!mounted) return;
 
     if (facepluginState == -1) {
@@ -232,8 +230,8 @@ class MyHomePageState extends State<MyHomePage> {
         }
         if (oldVersion < 3) {
           try {
-            await db.execute(
-                "ALTER TABLE person ADD COLUMN email text DEFAULT ''");
+            await db
+                .execute("ALTER TABLE person ADD COLUMN email text DEFAULT ''");
           } catch (e) {}
           try {
             await db.execute(
@@ -316,34 +314,21 @@ class MyHomePageState extends State<MyHomePage> {
     return null;
   }
 
-  // A method that retrieves all the dogs from the dogs table.
   Future<List<Person>> loadAllPersons() async {
-    // Get a reference to the database.
     final db = await createDB();
-
-    // Query the table for all The Dogs.
     final List<Map<String, dynamic>> maps = await db.query('person');
-
-    // Convert the List<Map<String, dynamic> into a List<Dog>.
     return List.generate(maps.length, (i) {
       return Person.fromMap(maps[i]);
     });
   }
 
   Future<void> insertPerson(Person person) async {
-    // Get a reference to the database.
     final db = await createDB();
-
-    // Insert the Dog into the correct table. You might also specify the
-    // `conflictAlgorithm` to use in case the same dog is inserted twice.
-    //
-    // In this case, replace any previous data.
     await db.insert(
       'person',
       person.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-
     setState(() {
       personList.add(person);
     });
@@ -352,11 +337,9 @@ class MyHomePageState extends State<MyHomePage> {
   Future<void> deleteAllPerson() async {
     final db = await createDB();
     await db.delete('person');
-
     setState(() {
       personList.clear();
     });
-
     Fluttertoast.showToast(
         msg: "All person deleted!",
         toastLength: Toast.LENGTH_SHORT,
@@ -368,17 +351,12 @@ class MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> deletePerson(index) async {
-    // ignore: invalid_use_of_protected_member
-
     final db = await createDB();
     await db
         .delete('person', where: 'name=?', whereArgs: [personList[index].name]);
-
-    // ignore: invalid_use_of_protected_member
     setState(() {
       personList.removeAt(index);
     });
-
     Fluttertoast.showToast(
         msg: "Person removed!",
         toastLength: Toast.LENGTH_SHORT,
@@ -399,7 +377,6 @@ class MyHomePageState extends State<MyHomePage> {
 
       final faces = await _facesdkPlugin.extractFaces(rotatedImage.path);
       for (var face in faces) {
-        // Check if face already exists
         final prefs = await SharedPreferences.getInstance();
         String? identifyThresholdStr = prefs.getString("identify_threshold");
         double identifyThreshold = double.parse(identifyThresholdStr ?? "0.8");
@@ -466,6 +443,76 @@ class MyHomePageState extends State<MyHomePage> {
     } catch (e) {}
   }
 
+  // ── Name input dialog before face capture ──
+  Future<void> _addEmployeeWithName() async {
+    final nameController = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Employee Name',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Enter full name',
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: const Color(0xFF2A2A2A),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            prefixIcon: const Icon(Icons.person_outline, color: Colors.white54),
+          ),
+          onSubmitted: (val) => Navigator.pop(ctx, val.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigoAccent,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Next'),
+          ),
+        ],
+      ),
+    );
+
+    nameController.dispose();
+
+    if (name == null || name.isEmpty) return;
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FaceCaptureView(
+          personList: personList,
+          insertPerson: insertPerson,
+          prefillName: name,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isFirstLoad) {
@@ -475,21 +522,9 @@ class MyHomePageState extends State<MyHomePage> {
     }
 
     return WillPopScope(
+      // ── Back button closes app ──
       onWillPop: () async {
-        if (widget.role == 'user') {
-          return false;
-        }
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => FaceRecognitionView(
-                    personList: personList,
-                    logAttendance: logAttendance,
-                    getLastPunchToday: getLastPunchToday,
-                    insertPerson: insertPerson,
-                    role: widget.role,
-                  )),
-        );
+        SystemNavigator.pop();
         return false;
       },
       child: Scaffold(
@@ -537,9 +572,9 @@ class MyHomePageState extends State<MyHomePage> {
           child: SingleChildScrollView(
             child: Column(
               children: <Widget>[
-                const SizedBox(height: 100), // Space for AppBar
+                const SizedBox(height: 100),
 
-                // Stats Header
+                // ── Stats Header ──
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.all(20),
@@ -595,54 +630,21 @@ class MyHomePageState extends State<MyHomePage> {
 
                 const SizedBox(height: 24),
 
-                // Action Grid
+                // ── Action Grid ──
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     children: [
+                      // Row 1: Add Employee + History
                       Row(
                         children: [
                           _buildActionCard(
                             context,
-                            'Identify',
-                            'Scan & Match',
-                            Icons.person_search_rounded,
-                            Colors.cyan,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => FaceRecognitionView(
-                                          personList: personList,
-                                          logAttendance: logAttendance,
-                                          getLastPunchToday: getLastPunchToday,
-                                          insertPerson: insertPerson,
-                                          role: widget.role,
-                                        )),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          _buildActionCard(
-                            context,
-                            'Capture',
-                            'Quick Scan',
-                            Icons.camera_alt_rounded,
+                            'Add Employee',
+                            'Enter name & face',
+                            Icons.person_add_rounded,
                             Colors.green,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => FaceCaptureView(
-                                          personList: personList,
-                                          insertPerson: insertPerson,
-                                        )),
-                              );
-                            },
+                            _addEmployeeWithName,
                           ),
                           const SizedBox(width: 16),
                           _buildActionCard(
@@ -662,7 +664,36 @@ class MyHomePageState extends State<MyHomePage> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 16),
+
+                      // Row 2: Employees (full width)
+                      Row(
+                        children: [
+                          _buildActionCard(
+                            context,
+                            'Employees',
+                            'View all staff',
+                            Icons.people_alt_rounded,
+                            Colors.orange,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const EmployeeListView(),
+                                ),
+                              ).then((_) {
+                                if (mounted) setState(() {});
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Settings button
                       ElevatedButton.icon(
                         onPressed: () {
                           Navigator.push(
@@ -734,7 +765,8 @@ class MyHomePageState extends State<MyHomePage> {
                     )
                   ],
                 ),
-                const SizedBox(height: 24), // Bottom padding
+
+                const SizedBox(height: 24),
               ],
             ),
           ),

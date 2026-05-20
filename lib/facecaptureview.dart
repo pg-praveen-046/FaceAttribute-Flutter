@@ -100,13 +100,21 @@ Rect scale(Rect rect, double factor) {
 }
 
 // ignore: must_be_immutable
+// ignore: must_be_immutable
 class FaceCaptureView extends StatefulWidget {
   final List<Person> personList;
   FaceDetectionViewController? faceDetectionViewController;
   final Function(Person) insertPerson;
 
-  FaceCaptureView(
-      {super.key, required this.personList, required this.insertPerson});
+  // ADD THIS
+  final String? prefillName;
+
+  FaceCaptureView({
+    super.key,
+    required this.personList,
+    required this.insertPerson,
+    this.prefillName, // ADD THIS
+  });
 
   @override
   State<StatefulWidget> createState() => FaceCaptureViewState();

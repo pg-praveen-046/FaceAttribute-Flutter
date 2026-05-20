@@ -510,27 +510,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          "11:22 AM",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            const Icon(Icons.wifi, size: 16, color: Colors.white),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.battery_full, size: 16, color: Colors.white),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
+          
                     const Text(
                       'Face Scanner',
                       style: TextStyle(
