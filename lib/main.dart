@@ -22,7 +22,8 @@ import 'attendance_history_view.dart';
 import 'staff_enrollment_view.dart';
 import 'login_view.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -103,6 +104,147 @@ class MyHomePageState extends State<MyHomePage> {
     init();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  //  Logout helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Shows a glassmorphic confirmation dialog before logging out.
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.65),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 36),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: const Color(0xFF111827),
+            borderRadius: BorderRadius.circular(28),
+            border:
+                Border.all(color: Colors.white.withOpacity(0.08), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.55),
+                blurRadius: 40,
+                spreadRadius: 8,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon ring
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.redAccent.withOpacity(0.08),
+                  border: Border.all(
+                      color: Colors.redAccent.withOpacity(0.25), width: 1.5),
+                ),
+                child: const Icon(Icons.logout_rounded,
+                    color: Colors.redAccent, size: 30),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Log Out?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You will be returned to the login screen.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white.withOpacity(0.45),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  // Cancel
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(false),
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(14),
+                          border:
+                              Border.all(color: Colors.white.withOpacity(0.08)),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Confirm
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(true),
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.redAccent.withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'Log Out',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginView()),
+        (route) => false,
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   Future<void> init() async {
     int facepluginState = -1;
     String warningState = "";
@@ -175,34 +317,8 @@ class MyHomePageState extends State<MyHomePage> {
       _warningState = warningState;
       _visibleWarning = visibleWarning;
       this.personList = personList;
+      _isFirstLoad = false;
     });
-
-    if (facepluginState == 0 && widget.role == 'user') {
-      Future.delayed(Duration.zero, () {
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => FaceRecognitionView(
-                    personList: this.personList,
-                    logAttendance: logAttendance,
-                    getLastPunchToday: getLastPunchToday,
-                    insertPerson: insertPerson,
-                    role: widget.role,
-                  )),
-        ).then((_) {
-          if (mounted) {
-            setState(() {
-              _isFirstLoad = false;
-            });
-          }
-        });
-      });
-    } else {
-      setState(() {
-        _isFirstLoad = false;
-      });
-    }
   }
 
   Future<Database> createDB() async {
@@ -443,69 +559,15 @@ class MyHomePageState extends State<MyHomePage> {
     } catch (e) {}
   }
 
-  // ── Name input dialog before face capture ──
   Future<void> _addEmployeeWithName() async {
-    final nameController = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Employee Name',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: TextField(
-          controller: nameController,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'Enter full name',
-            hintStyle: const TextStyle(color: Colors.white38),
-            filled: true,
-            fillColor: const Color(0xFF2A2A2A),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            prefixIcon: const Icon(Icons.person_outline, color: Colors.white54),
-          ),
-          onSubmitted: (val) => Navigator.pop(ctx, val.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.indigoAccent,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Next'),
-          ),
-        ],
-      ),
-    );
-
-    nameController.dispose();
-
-    if (name == null || name.isEmpty) return;
     if (!mounted) return;
-
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => FaceCaptureView(
           personList: personList,
           insertPerson: insertPerson,
-          prefillName: name,
+          prefillName: '',
         ),
       ),
     ).then((_) {
@@ -521,9 +583,25 @@ class MyHomePageState extends State<MyHomePage> {
       );
     }
 
+    // For user role, navigate to face recognition view
+    if (widget.role == 'user') {
+      return FaceRecognitionView(
+        personList: personList,
+        logAttendance: logAttendance,
+        getLastPunchToday: getLastPunchToday,
+        insertPerson: insertPerson,
+        role: widget.role,
+      );
+    }
+
+    // For admin role, show dashboard
     return WillPopScope(
-      // ── Back button closes app ──
       onWillPop: () async {
+        // For user role, intercept back and show logout confirmation
+        if (widget.role == 'user') {
+          await _confirmLogout();
+          return false;
+        }
         SystemNavigator.pop();
         return false;
       },
@@ -531,18 +609,12 @@ class MyHomePageState extends State<MyHomePage> {
         appBar: AppBar(
           automaticallyImplyLeading: false,
           leading: null,
+          // ── Logout button visible for ALL roles ──
           actions: [
-            if (widget.role == 'admin')
-              IconButton(
-                icon: const Icon(Icons.logout, color: Colors.white),
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginView()),
-                    (route) => false,
-                  );
-                },
-              ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _LogoutButton(onTap: _confirmLogout),
+            ),
           ],
           title: const Text(
             'Dashboard',
@@ -635,7 +707,6 @@ class MyHomePageState extends State<MyHomePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     children: [
-                      // Row 1: Add Employee + History
                       Row(
                         children: [
                           _buildActionCard(
@@ -664,10 +735,7 @@ class MyHomePageState extends State<MyHomePage> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 16),
-
-                      // Row 2: Employees (full width)
                       Row(
                         children: [
                           _buildActionCard(
@@ -690,10 +758,7 @@ class MyHomePageState extends State<MyHomePage> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 16),
-
-                      // Settings button
                       ElevatedButton.icon(
                         onPressed: () {
                           Navigator.push(
@@ -818,6 +883,47 @@ class MyHomePageState extends State<MyHomePage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Logout button widget — subtle pill with icon + label
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LogoutButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _LogoutButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.redAccent.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(50),
+          border:
+              Border.all(color: Colors.redAccent.withOpacity(0.25), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
+            SizedBox(width: 6),
+            Text(
+              'Logout',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
         ),
       ),
     );

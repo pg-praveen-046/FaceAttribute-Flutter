@@ -251,12 +251,14 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
           // Subsequent scan - Check if coming back from break (IN) or going on break (OUT)
           if (lastPunch != null && lastPunch['type'] == 'OUT') {
             _currentPunchType = "IN";
-            _currentPunchRemark = "Back from ${lastPunch['remark']?.replaceAll('OUT for ', '') ?? 'Break'}";
-            
+            _currentPunchRemark =
+                "Back from ${lastPunch['remark']?.replaceAll('OUT for ', '') ?? 'Break'}";
+
             if (widget.logAttendance != null) {
-              widget.logAttendance!(_lastMatchedPerson!, type: "IN", remark: _currentPunchRemark);
+              widget.logAttendance!(_lastMatchedPerson!,
+                  type: "IN", remark: _currentPunchRemark);
             }
-            
+
             setState(() {
               _recognized = true;
               _showWelcomeCard = true;
@@ -295,20 +297,9 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
               face['roll'].abs() < 15 &&
               face['pitch'].abs() < 15 &&
               face['face_quality'] > 0.4) {
-            if (widget.role == 'admin') {
-              _isDialogShowing = true;
-              faceDetectionViewController?.stopCamera();
-              showEnrollDialog();
-            } else {
-              // For user role, just show a temporary toast or ignore
-              Fluttertoast.showToast(
-                msg: "Face not recognized. Please contact admin.",
-                toastLength: Toast.LENGTH_SHORT,
-                gravity: ToastGravity.BOTTOM,
-                backgroundColor: Colors.redAccent,
-                textColor: Colors.white,
-              );
-            }
+            _isDialogShowing = true;
+            faceDetectionViewController?.stopCamera();
+            showNotRecognizedDialog();
           }
         }
       }
@@ -353,8 +344,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
     });
   }
 
-  void showEnrollDialog() async {
-    bool? enroll = await showDialog<bool>(
+  void showNotRecognizedDialog() async {
+    await showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) {
@@ -398,61 +389,33 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'This face is not currently in our database. Would you like to enroll this staff member now?',
+                    'This face is not currently in our database. Please contact admin.',
                     style: TextStyle(
                         fontSize: 14, color: Colors.white60, height: 1.5),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child: const Text('Cancel',
-                              style: TextStyle(color: Colors.white38)),
-                        ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orangeAccent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orangeAccent,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child: const Text('Enroll Now',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
+                      child: const Text('OK',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
                   ),
                 ],
               ),
             ),
           );
         });
-
-    if (enroll == true && widget.insertPerson != null) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => FaceCaptureView(
-            personList: widget.personList,
-            insertPerson: widget.insertPerson!,
-          ),
-        ),
-      );
-    }
 
     _isDialogShowing = false;
     faceRecognitionStart();
@@ -504,81 +467,122 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
 
             FaceDetectionView(faceRecognitionViewState: this),
 
-            // Portal Header (Time & Status)
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: Column(
-                  children: [
-          
-                    const Text(
-                      'Face Scanner',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Position your face within the frame',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.5),
-                      ),
-                    ),
-                  ],
-                ),
+            // Dark Overlay with cutout
+            IgnorePointer(
+              child: CustomPaint(
+                size: Size.infinite,
+                painter: ScannerOverlayPainter(),
               ),
             ),
 
-            // Back/Menu Buttons (Floating)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 110,
-              left: 20,
-              child: widget.role == 'user'
-                  ? const SizedBox()
-                  : IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          shape: BoxShape.circle,
+            // Header and Buttons Row
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Back Button (only for admin)
+                    if (widget.role != 'user')
+                      Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: IconButton(
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+                          ),
+                          onPressed: () {
+                            faceDetectionViewController?.stopCamera();
+                            Navigator.pop(context);
+                          },
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new,
-                            color: Colors.white, size: 18),
                       ),
-                      onPressed: () {
-                        faceDetectionViewController?.stopCamera();
-                        Navigator.pop(context);
-                      },
+
+                    // Titles
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Face Scanner',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black54,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Position your face within the frame',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.85),
+                              fontWeight: FontWeight.w500,
+                              shadows: const [
+                                Shadow(
+                                  color: Colors.black54,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-            ),
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 110,
-              right: 20,
-              child: widget.role != 'user'
-                  ? const SizedBox()
-                  : IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          shape: BoxShape.circle,
+
+                    // Logout Button (only for user)
+                    if (widget.role == 'user')
+                      GestureDetector(
+                        onTap: () {
+                          faceDetectionViewController?.stopCamera();
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginView()),
+                            (route) => false,
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.redAccent.withOpacity(0.5), width: 1.5),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
+                              const SizedBox(width: 6),
+                              const Text(
+                                "Logout",
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: const Icon(Icons.logout_rounded,
-                            color: Colors.white, size: 18),
                       ),
-                      onPressed: () {
-                        faceDetectionViewController?.stopCamera();
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (context) => const LoginView()),
-                          (route) => false,
-                        );
-                      },
-                    ),
+                  ],
+                ),
+              ),
             ),
 
             // Scanner Overlay Frame
@@ -604,13 +608,12 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                             !_showOutRequest &&
                             !_showWelcomeCard)
                           Positioned(
-                            top: MediaQuery.of(context).size.height *
-                                0.6 *
+                            top: (MediaQuery.of(context).size.height * 0.6) *
                                 _scannerAnimation.value,
                             left: 0,
                             right: 0,
                             child: Container(
-                              height: 2,
+                              height: 3,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
@@ -621,9 +624,14 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.cyanAccent.withOpacity(0.5),
-                                    blurRadius: 10,
-                                    spreadRadius: 2,
+                                    color: Colors.cyanAccent.withOpacity(0.8),
+                                    blurRadius: 15,
+                                    spreadRadius: 3,
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.white.withOpacity(0.5),
+                                    blurRadius: 5,
+                                    spreadRadius: 1,
                                   ),
                                 ],
                               ),
@@ -768,9 +776,12 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                       decoration: BoxDecoration(
                         color: const Color(0xFF0D1117), // Deep Portal Navy
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+                        border: Border.all(
+                            color: Colors.white.withOpacity(0.05), width: 1),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 20)
+                          BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 20)
                         ],
                       ),
                       child: SingleChildScrollView(
@@ -786,7 +797,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                             ),
                             const SizedBox(height: 12),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF161B22),
                                 borderRadius: BorderRadius.circular(12),
@@ -794,11 +806,14 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.history_toggle_off, size: 14, color: Colors.blueAccent),
+                                  const Icon(Icons.history_toggle_off,
+                                      size: 14, color: Colors.blueAccent),
                                   const SizedBox(width: 8),
                                   Text(
                                     "Next scan in: ",
-                                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6)),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white.withOpacity(0.6)),
                                   ),
                                   Text(
                                     "${_outRequestTimer}s",
@@ -819,10 +834,16 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                               mainAxisSpacing: 10,
                               childAspectRatio: 2.5,
                               children: [
-                                _buildImageStyleButton("Tea", Icons.coffee, const Color(0xFF2962FF)),
-                                _buildImageStyleButton("Lunch", Icons.restaurant, const Color(0xFF2962FF)),
-                                _buildImageStyleButton("Bank", Icons.account_balance, const Color(0xFF2962FF)),
-                                _buildImageStyleButton("Others", Icons.more_horiz, const Color(0xFF2962FF)),
+                                _buildImageStyleButton("Tea", Icons.coffee,
+                                    const Color(0xFF2962FF)),
+                                _buildImageStyleButton("Lunch",
+                                    Icons.restaurant, const Color(0xFF2962FF)),
+                                _buildImageStyleButton(
+                                    "Bank",
+                                    Icons.account_balance,
+                                    const Color(0xFF2962FF)),
+                                _buildImageStyleButton("Others",
+                                    Icons.more_horiz, const Color(0xFF2962FF)),
                               ],
                             ),
                           ],
@@ -842,11 +863,13 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                   child: Center(
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.95,
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 24),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0D1117),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+                        border: Border.all(
+                            color: Colors.white.withOpacity(0.05), width: 1),
                       ),
                       child: SingleChildScrollView(
                         child: Column(
@@ -862,15 +885,21 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                                   height: 100,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: const Color(0xFF00F2FF), width: 2),
+                                    border: Border.all(
+                                        color: const Color(0xFF00F2FF),
+                                        width: 2),
                                     boxShadow: [
-                                      BoxShadow(color: const Color(0xFF00F2FF).withOpacity(0.2), blurRadius: 10)
+                                      BoxShadow(
+                                          color: const Color(0xFF00F2FF)
+                                              .withOpacity(0.2),
+                                          blurRadius: 10)
                                     ],
                                   ),
                                   child: CircleAvatar(
                                     radius: 48,
                                     backgroundColor: Colors.black,
-                                    backgroundImage: MemoryImage(_lastMatchedPerson!.faceJpg),
+                                    backgroundImage: MemoryImage(
+                                        _lastMatchedPerson!.faceJpg),
                                   ),
                                 ),
                                 Positioned(
@@ -878,33 +907,58 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                                   right: 0,
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(color: Color(0xFF00F2FF), shape: BoxShape.circle),
-                                    child: const Icon(Icons.check, size: 14, color: Colors.black),
+                                    decoration: const BoxDecoration(
+                                        color: Color(0xFF00F2FF),
+                                        shape: BoxShape.circle),
+                                    child: const Icon(Icons.check,
+                                        size: 14, color: Colors.black),
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 16),
-                            const Text("Identity Verified", style: TextStyle(color: Color(0xFF00F2FF), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                            Text(_lastMatchedPerson!.name, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
+                            const Text("Identity Verified",
+                                style: TextStyle(
+                                    color: Color(0xFF00F2FF),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2)),
+                            Text(_lastMatchedPerson!.name,
+                                style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white)),
                             const SizedBox(height: 8),
                             // Status Pill
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 6),
                               decoration: BoxDecoration(
-                                color: _currentPunchType == "OUT" ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                                color: _currentPunchType == "OUT"
+                                    ? Colors.red.withOpacity(0.1)
+                                    : Colors.green.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: (_currentPunchType == "OUT" ? Colors.red : Colors.green).withOpacity(0.3)),
+                                border: Border.all(
+                                    color: (_currentPunchType == "OUT"
+                                            ? Colors.red
+                                            : Colors.green)
+                                        .withOpacity(0.3)),
                               ),
                               child: Text(
                                 "$_currentPunchType — ${_currentPunchRemark.replaceAll('OUT for ', '')}",
-                                style: TextStyle(color: _currentPunchType == "OUT" ? Colors.redAccent : Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                                style: TextStyle(
+                                    color: _currentPunchType == "OUT"
+                                        ? Colors.redAccent
+                                        : Colors.greenAccent,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13),
                               ),
                             ),
                             const SizedBox(height: 24),
                             // Info List
                             Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF161B22),
@@ -912,11 +966,19 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                               ),
                               child: Column(
                                 children: [
-                                  _buildImageStyleRow(Icons.work_outline, "Designation", _lastMatchedPerson!.designation),
-                                  _buildImageStyleRow(Icons.alternate_email, "Email", _lastMatchedPerson!.email),
-                                  _buildImageStyleRow(Icons.phone_android, "Phone", _lastMatchedPerson!.contact),
-                                  _buildImageStyleRow(Icons.schedule, "Punch Time", _currentPunchTime, valueColor: Colors.blueAccent),
-                                  _buildImageStyleRow(Icons.sync_alt, "Entry Type", _currentPunchType),
+                                  _buildImageStyleRow(
+                                      Icons.work_outline,
+                                      "Designation",
+                                      _lastMatchedPerson!.designation),
+                                  _buildImageStyleRow(Icons.alternate_email,
+                                      "Email", _lastMatchedPerson!.email),
+                                  _buildImageStyleRow(Icons.phone_android,
+                                      "Phone", _lastMatchedPerson!.contact),
+                                  _buildImageStyleRow(Icons.schedule,
+                                      "Punch Time", _currentPunchTime,
+                                      valueColor: Colors.blueAccent),
+                                  _buildImageStyleRow(Icons.sync_alt,
+                                      "Entry Type", _currentPunchType),
                                 ],
                               ),
                             ),
@@ -937,10 +999,15 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF2962FF),
                                     foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
                                     elevation: 0,
                                   ),
-                                  child: const Text("Confirm & Continue", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  child: const Text("Confirm & Continue",
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold)),
                                 ),
                               ),
                             ),
@@ -958,27 +1025,29 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
   }
 
   Widget _buildScannerCorner(Alignment alignment) {
-    bool isLeft = alignment == Alignment.topLeft || alignment == Alignment.bottomLeft;
-    bool isTop = alignment == Alignment.topLeft || alignment == Alignment.topRight;
+    bool isLeft =
+        alignment == Alignment.topLeft || alignment == Alignment.bottomLeft;
+    bool isTop =
+        alignment == Alignment.topLeft || alignment == Alignment.topRight;
 
     return Align(
       alignment: alignment,
       child: Container(
-        width: 32,
-        height: 32,
+        width: 45,
+        height: 45,
         decoration: BoxDecoration(
           border: Border(
             top: isTop
-                ? const BorderSide(color: Color(0xFF2962FF), width: 3)
+                ? const BorderSide(color: Colors.cyanAccent, width: 4)
                 : BorderSide.none,
             bottom: !isTop
-                ? const BorderSide(color: Color(0xFF2962FF), width: 3)
+                ? const BorderSide(color: Colors.cyanAccent, width: 4)
                 : BorderSide.none,
             left: isLeft
-                ? const BorderSide(color: Color(0xFF2962FF), width: 3)
+                ? const BorderSide(color: Colors.cyanAccent, width: 4)
                 : BorderSide.none,
             right: !isLeft
-                ? const BorderSide(color: Color(0xFF2962FF), width: 3)
+                ? const BorderSide(color: Colors.cyanAccent, width: 4)
                 : BorderSide.none,
           ),
         ),
@@ -1027,7 +1096,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.5)),
+                  style: TextStyle(
+                      fontSize: 14, color: Colors.white.withOpacity(0.5)),
                 ),
                 Text(
                   value.isEmpty ? "N/A" : value,
@@ -1171,4 +1241,31 @@ class FacePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+
+class ScannerOverlayPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final scanArea = Rect.fromLTWH(
+      size.width * 0.1,
+      size.height * 0.2,
+      size.width * 0.8,
+      size.height * 0.6,
+    );
+
+    final paint = Paint()
+      ..color = Colors.black.withOpacity(0.75)
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..addRect(rect)
+      ..addRect(scanArea);
+    
+    path.fillType = PathFillType.evenOdd;
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

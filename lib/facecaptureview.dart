@@ -559,65 +559,69 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
       padding: const EdgeInsets.all(24),
       child: SafeArea(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: Colors.white10),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.indigoAccent.withOpacity(0.2),
-                      blurRadius: 40,
-                      spreadRadius: 5)
-                ],
-              ),
-              child: Column(
-                children: [
-                  const Icon(Icons.check_circle_rounded,
-                      color: Colors.greenAccent, size: 64),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Capture Success",
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1,
-                        color: Colors.white),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildQualityRow(Icons.security, "Liveness",
-                      _capturedLiveness.split('=').last.trim()),
-                  _buildQualityRow(Icons.high_quality, "Quality",
-                      _capturedQuality.split('=').last.trim()),
-                  _buildQualityRow(Icons.wb_sunny, "Lighting",
-                      _capturedLuminance.split(':').last.trim()),
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => registerFace(context),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: Colors.white10),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.indigoAccent.withOpacity(0.2),
+                        blurRadius: 40,
+                        spreadRadius: 5)
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const Icon(Icons.check_circle_rounded,
+                          color: Colors.greenAccent, size: 64),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Capture Success",
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1,
+                            color: Colors.white),
                       ),
-                      child: const Text("Enroll Staff",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
+                      const SizedBox(height: 24),
+                      _buildQualityRow(Icons.security, "Liveness",
+                          _capturedLiveness.split('=').last.trim()),
+                      _buildQualityRow(Icons.high_quality, "Quality",
+                          _capturedQuality.split('=').last.trim()),
+                      _buildQualityRow(Icons.wb_sunny, "Lighting",
+                          _capturedLuminance.split(':').last.trim()),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => registerFace(context),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: const Text("Enroll Staff",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setViewMode(ViewMode.NO_FACE_PREPARE);
+                          faceDetectionViewController?.startCamera(1);
+                        },
+                        child: const Text("Retake Photo",
+                            style: TextStyle(color: Colors.white38)),
+                      ),
+                    ],
                   ),
-                  TextButton(
-                    onPressed: () {
-                      setViewMode(ViewMode.NO_FACE_PREPARE);
-                      faceDetectionViewController?.startCamera(1);
-                    },
-                    child: const Text("Retake Photo",
-                        style: TextStyle(color: Colors.white38)),
-                  ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 40),
