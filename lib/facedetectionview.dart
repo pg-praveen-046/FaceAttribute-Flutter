@@ -12,6 +12,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'person.dart';
 import 'facecaptureview.dart';
 import 'login_view.dart';
+import 'scanner_intro_view.dart';
 
 // ignore: must_be_immutable
 class FaceRecognitionView extends StatefulWidget {
@@ -58,6 +59,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
   late Animation<double> _scannerAnimation;
   bool _showOutRequest = false;
   bool _showWelcomeCard = false;
+  bool _showSuccessAnimation = false;
   Person? _lastMatchedPerson;
   String _currentPunchType = "IN";
   String _currentPunchRemark = "";
@@ -244,8 +246,16 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
 
           setState(() {
             _recognized = true;
-            _showWelcomeCard = true;
+            _showSuccessAnimation = true;
             _faces = null;
+          });
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted) {
+              setState(() {
+                _showSuccessAnimation = false;
+                _showWelcomeCard = true;
+              });
+            }
           });
         } else {
           // Subsequent scan - Check if coming back from break (IN) or going on break (OUT)
@@ -261,9 +271,17 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
 
             setState(() {
               _recognized = true;
-              _showWelcomeCard = true;
+              _showSuccessAnimation = true;
               _showOutRequest = false;
               _faces = null;
+            });
+            Future.delayed(const Duration(milliseconds: 1500), () {
+              if (mounted) {
+                setState(() {
+                  _showSuccessAnimation = false;
+                  _showWelcomeCard = true;
+                });
+              }
             });
           } else {
             setState(() {
@@ -340,7 +358,15 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
 
     setState(() {
       _showOutRequest = false;
-      _showWelcomeCard = true;
+      _showSuccessAnimation = true;
+    });
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() {
+          _showSuccessAnimation = false;
+          _showWelcomeCard = true;
+        });
+      }
     });
   }
 
@@ -763,6 +789,42 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
               ),
 
             // Out Request Purpose Dialog (Matched to Image)
+            if (_showSuccessAnimation)
+              Container(
+                color: Colors.black.withOpacity(0.85),
+                child: Center(
+                  child: TweenAnimationBuilder(
+                    tween: Tween<double>(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.elasticOut,
+                    builder: (context, double value, child) {
+                      return Transform.scale(
+                        scale: value,
+                        child: Container(
+                          padding: const EdgeInsets.all(40),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.cyanAccent.withOpacity(0.1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.cyanAccent.withOpacity(0.4),
+                                blurRadius: 50 * value,
+                                spreadRadius: 20 * value,
+                              )
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.check_circle_rounded,
+                            color: Colors.cyanAccent,
+                            size: 100,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+
             if (_showOutRequest)
               BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -991,10 +1053,22 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                                 height: 54,
                                 child: ElevatedButton(
                                   onPressed: () {
-                                    setState(() {
-                                      _showWelcomeCard = false;
-                                      _recognized = false;
-                                    });
+                                    faceDetectionViewController?.stopCamera();
+                                    Navigator.pushReplacement(
+                                      context,
+                                      PageRouteBuilder(
+                                        pageBuilder: (context, animation, secondaryAnimation) => ScannerIntroView(
+                                          personList: widget.personList,
+                                          logAttendance: widget.logAttendance,
+                                          getLastPunchToday: widget.getLastPunchToday,
+                                          insertPerson: widget.insertPerson,
+                                          role: widget.role,
+                                        ),
+                                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                          return FadeTransition(opacity: animation, child: child);
+                                        },
+                                      ),
+                                    );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF2962FF),

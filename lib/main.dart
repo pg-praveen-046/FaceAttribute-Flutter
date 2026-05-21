@@ -21,6 +21,7 @@ import 'facecaptureview.dart';
 import 'attendance_history_view.dart';
 import 'staff_enrollment_view.dart';
 import 'login_view.dart';
+import 'scanner_intro_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -583,9 +584,9 @@ class MyHomePageState extends State<MyHomePage> {
       );
     }
 
-    // For user role, navigate to face recognition view
+    // For user role, navigate to face recognition view (intro screen first)
     if (widget.role == 'user') {
-      return FaceRecognitionView(
+      return ScannerIntroView(
         personList: personList,
         logAttendance: logAttendance,
         getLastPunchToday: getLastPunchToday,
