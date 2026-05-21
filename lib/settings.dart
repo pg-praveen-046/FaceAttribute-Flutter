@@ -180,8 +180,11 @@ class SettingsPageState extends State<SettingsPage> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        child: Column(
-          children: [
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              children: [
             const SizedBox(height: 16),
             _buildSectionHeader('General Configuration'),
             _buildSettingsCard([
@@ -240,7 +243,9 @@ class SettingsPageState extends State<SettingsPage> {
               ),
             ]),
             const SizedBox(height: 40),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

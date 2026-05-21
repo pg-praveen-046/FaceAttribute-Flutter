@@ -107,8 +107,11 @@ class _EmployeeListViewState extends State<EmployeeListView> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: Column(
+                  children: [
                 // ── Total Count Card ──
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -274,7 +277,9 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                           },
                         ),
                 ),
-              ],
+                  ],
+                ),
+              ),
             ),
     );
   }

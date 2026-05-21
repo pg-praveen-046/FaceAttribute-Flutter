@@ -370,6 +370,83 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
     });
   }
 
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  "Confirm Logout",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Are you sure you want to log out and end this session?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.6),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text("Cancel", style: TextStyle(color: Colors.white54, fontSize: 16)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          faceDetectionViewController?.stopCamera();
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginView()),
+                            (route) => false,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text("Logout", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void showNotRecognizedDialog() async {
     await showDialog(
         context: context,
@@ -572,38 +649,27 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
 
                     // Logout Button (only for user)
                     if (widget.role == 'user')
-                      GestureDetector(
-                        onTap: () {
-                          faceDetectionViewController?.stopCamera();
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginView()),
-                            (route) => false,
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withOpacity(0.15),
+                      ElevatedButton.icon(
+                        onPressed: _showLogoutDialog,
+                        icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
+                        label: const Text(
+                          "Logout",
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent.withOpacity(0.15),
+                          elevation: 0,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.redAccent.withOpacity(0.5), width: 1.5),
+                            side: BorderSide(color: Colors.redAccent.withOpacity(0.5), width: 1.5),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
-                              const SizedBox(width: 6),
-                              const Text(
-                                "Logout",
-                                style: TextStyle(
-                                  color: Colors.redAccent,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         ),
                       ),
                   ],
@@ -670,12 +736,14 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
               ),
             ),
 
-            SizedBox(
-              width: double.infinity,
-              height: double.infinity,
-              child: CustomPaint(
-                painter: FacePainter(
-                    faces: _faces, livenessThreshold: _livenessThreshold),
+            IgnorePointer(
+              child: SizedBox(
+                width: double.infinity,
+                height: double.infinity,
+                child: CustomPaint(
+                  painter: FacePainter(
+                      faces: _faces, livenessThreshold: _livenessThreshold),
+                ),
               ),
             ),
             if (_recognized && !_showOutRequest && !_showWelcomeCard)
@@ -833,6 +901,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                   child: Center(
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.95,
+                      constraints: const BoxConstraints(maxWidth: 450),
                       margin: const EdgeInsets.all(16),
                       padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
                       decoration: BoxDecoration(
@@ -850,12 +919,31 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
-                              "Out Request Purpose",
-                              style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const SizedBox(width: 48), // Balance for centering
+                                const Expanded(
+                                  child: Text(
+                                    "Out Request Purpose",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close_rounded, color: Colors.white54),
+                                  onPressed: () {
+                                    setState(() {
+                                      _showOutRequest = false;
+                                      _recognized = false;
+                                      _countdownTimer?.cancel();
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 12),
                             Container(
@@ -925,6 +1013,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                   child: Center(
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.95,
+                      constraints: const BoxConstraints(maxWidth: 450),
                       margin: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 24),
                       decoration: BoxDecoration(

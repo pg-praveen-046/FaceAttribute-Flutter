@@ -23,6 +23,8 @@ import 'staff_enrollment_view.dart';
 import 'login_view.dart';
 import 'scanner_intro_view.dart';
 
+import 'splash_view.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -77,7 +79,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const LoginView());
+        home: const SplashView());
   }
 }
 
@@ -601,7 +603,7 @@ class MyHomePageState extends State<MyHomePage> {
         // For user role, intercept back and show logout confirmation
         if (widget.role == 'user') {
           await _confirmLogout();
-          return false;
+          return false; 
         }
         SystemNavigator.pop();
         return false;
@@ -625,7 +627,7 @@ class MyHomePageState extends State<MyHomePage> {
               fontSize: 20,
             ),
           ),
-          centerTitle: true,
+          
           toolbarHeight: 70,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -643,197 +645,202 @@ class MyHomePageState extends State<MyHomePage> {
             ),
           ),
           child: SingleChildScrollView(
-            child: Column(
-              children: <Widget>[
-                const SizedBox(height: 100),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: Column(
+                  children: <Widget>[
+                    const SizedBox(height: 100),
 
-                // ── Stats Header ──
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blue.shade900, Colors.blue.shade700],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withOpacity(0.3),
-                        blurRadius: 15,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Total Enrolled',
-                            style:
-                                TextStyle(color: Colors.white70, fontSize: 16),
+                    // ── Stats Header ──
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blue.shade900, Colors.blue.shade700],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.3),
+                            blurRadius: 15,
+                            spreadRadius: 2,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${personList.length} Staff',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Total Enrolled',
+                                style: TextStyle(
+                                    color: Colors.white70, fontSize: 16),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${personList.length} Staff',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.people_outline,
+                                color: Colors.white, size: 30),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ── Action Grid ──
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              _buildActionCard(
+                                context,
+                                'Add Employee',
+                                'Enter name & face',
+                                Icons.person_add_rounded,
+                                Colors.green,
+                                _addEmployeeWithName,
+                              ),
+                              const SizedBox(width: 16),
+                              _buildActionCard(
+                                context,
+                                'History',
+                                'Log Records',
+                                Icons.history_rounded,
+                                Colors.purple,
+                                () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            AttendanceHistoryView()),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              _buildActionCard(
+                                context,
+                                'Employees',
+                                'View all staff',
+                                Icons.people_alt_rounded,
+                                Colors.orange,
+                                () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const EmployeeListView(),
+                                    ),
+                                  ).then((_) {
+                                    if (mounted) setState(() {});
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => SettingsPage(
+                                          homePageState: this,
+                                        )),
+                              );
+                            },
+                            icon: const Icon(Icons.settings_outlined),
+                            label: const Text('System Settings'),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ],
                       ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.people_outline,
-                            color: Colors.white, size: 30),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ── Action Grid ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          _buildActionCard(
-                            context,
-                            'Add Employee',
-                            'Enter name & face',
-                            Icons.person_add_rounded,
-                            Colors.green,
-                            _addEmployeeWithName,
-                          ),
-                          const SizedBox(width: 16),
-                          _buildActionCard(
-                            context,
-                            'History',
-                            'Log Records',
-                            Icons.history_rounded,
-                            Colors.purple,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        AttendanceHistoryView()),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          _buildActionCard(
-                            context,
-                            'Employees',
-                            'View all staff',
-                            Icons.people_alt_rounded,
-                            Colors.orange,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const EmployeeListView(),
-                                ),
-                              ).then((_) {
-                                if (mounted) setState(() {});
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => SettingsPage(
-                                      homePageState: this,
-                                    )),
-                          );
-                        },
-                        icon: const Icon(Icons.settings_outlined),
-                        label: const Text('System Settings'),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'Recent Staff',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const Spacer(),
-                      if (personList.isNotEmpty)
-                        TextButton(
-                          onPressed: deleteAllPerson,
-                          child: const Text('Clear All',
-                              style: TextStyle(color: Colors.redAccent)),
-                        ),
-                    ],
-                  ),
-                ),
-
-                Stack(
-                  children: [
-                    PersonView(
-                      personList: personList,
-                      homePageState: this,
                     ),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Visibility(
-                            visible: _visibleWarning,
-                            child: Container(
-                              width: double.infinity,
-                              height: 40,
-                              color: Colors.redAccent,
-                              child: Center(
-                                child: Text(
-                                  _warningState,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                              ),
-                            ))
+
+                    const SizedBox(height: 24),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          const Text(
+                            'Recent Staff',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          const Spacer(),
+                          if (personList.isNotEmpty)
+                            TextButton(
+                              onPressed: deleteAllPerson,
+                              child: const Text('Clear All',
+                                  style: TextStyle(color: Colors.redAccent)),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    Stack(
+                      children: [
+                        PersonView(
+                          personList: personList,
+                          homePageState: this,
+                        ),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Visibility(
+                                visible: _visibleWarning,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 40,
+                                  color: Colors.redAccent,
+                                  child: Center(
+                                    child: Text(
+                                      _warningState,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                ))
+                          ],
+                        )
                       ],
-                    )
+                    ),
+
+                    const SizedBox(height: 24),
                   ],
                 ),
-
-                const SizedBox(height: 24),
-              ],
+              ),
             ),
           ),
         ),

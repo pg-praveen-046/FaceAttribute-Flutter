@@ -563,6 +563,7 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
           children: [
             Flexible(
               child: Container(
+                constraints: const BoxConstraints(maxWidth: 450),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E1E1E),

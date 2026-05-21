@@ -119,7 +119,9 @@ class _LoginViewState extends State<LoginView> {
             child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Logo Section
@@ -178,74 +180,71 @@ class _LoginViewState extends State<LoginView> {
                     // Login Card
                     ClipRRect(
                       borderRadius: BorderRadius.circular(28),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(28),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
-                              width: 1.5,
+                      child: Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E1E1E), // Solid color instead of blur
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildTextField(
+                              controller: _usernameController,
+                              hint: 'Username',
+                              icon: Icons.person_outline_rounded,
                             ),
-                          ),
-                          child: Column(
-                            children: [
-                              _buildTextField(
-                                controller: _usernameController,
-                                hint: 'Username',
-                                icon: Icons.person_outline_rounded,
-                              ),
-                              const SizedBox(height: 20),
-                              _buildTextField(
-                                controller: _passwordController,
-                                hint: 'Password',
-                                icon: Icons.lock_outline_rounded,
-                                isPassword: true,
-                                isVisible: _isPasswordVisible,
-                                onToggleVisibility: () {
-                                  setState(() =>
-                                      _isPasswordVisible = !_isPasswordVisible);
-                                },
-                              ),
-                              const SizedBox(height: 32),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleLogin,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.indigoAccent,
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    elevation: 0,
+                            const SizedBox(height: 20),
+                            _buildTextField(
+                              controller: _passwordController,
+                              hint: 'Password',
+                              icon: Icons.lock_outline_rounded,
+                              isPassword: true,
+                              isVisible: _isPasswordVisible,
+                              onToggleVisibility: () {
+                                setState(() =>
+                                    _isPasswordVisible = !_isPasswordVisible);
+                              },
+                            ),
+                            const SizedBox(height: 32),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 56,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _handleLogin,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.indigoAccent,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: _isLoading
-                                      ? const SizedBox(
-                                          height: 24,
-                                          width: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                    Colors.white),
-                                          ),
-                                        )
-                                      : const Text(
-                                          'LOGIN',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 2,
-                                          ),
-                                        ),
+                                  elevation: 0,
                                 ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 24,
+                                        width: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'LOGIN',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 2,
+                                        ),
+                                      ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -261,6 +260,7 @@ class _LoginViewState extends State<LoginView> {
                       ),
                     ),
                   ],
+                ),
                 ),
               ),
             ),

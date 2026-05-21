@@ -84,93 +84,100 @@ class _ScannerIntroViewState extends State<ScannerIntroView>
           ),
 
           SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                
-                // Animated Face Scanner Graphic
-                Center(
-                  child: SizedBox(
-                    width: 250,
-                    height: 250,
-                    child: AnimatedBuilder(
-                      animation: _controller,
-                      builder: (context, child) {
-                        return CustomPaint(
-                          painter: _ScannerAnimationPainter(
-                            progress: _controller.value,
+            child: Center(
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 40),
+                      
+                      // Animated Face Scanner Graphic
+                      Center(
+                        child: SizedBox(
+                          width: 200,
+                          height: 200,
+                          child: AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, child) {
+                              return CustomPaint(
+                                painter: _ScannerAnimationPainter(
+                                  progress: _controller.value,
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 50),
-                
-                // Text Description
-                const Text(
-                  "Face Scanner",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Text(
-                    "Securely log your attendance by verifying your identity with the advanced facial recognition system.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 16,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-                
-                const Spacer(),
-                
-                // Start Button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
-                  child: GestureDetector(
-                    onTap: _startScanning,
-                    child: Container(
-                      width: double.infinity,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Colors.cyanAccent, Colors.indigoAccent],
                         ),
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.cyanAccent.withOpacity(0.4),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
                       ),
-                      child: const Center(
+                      
+                      const SizedBox(height: 50),
+                      
+                      // Text Description
+                      const Text(
+                        "Face Scanner",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
                         child: Text(
-                          "START SCANNING",
+                          "Securely log your attendance by verifying your identity with the advanced facial recognition system.",
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.black87,
+                            color: Colors.white.withOpacity(0.6),
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.5,
+                            height: 1.5,
                           ),
                         ),
                       ),
-                    ),
+                      
+                      const SizedBox(height: 40),
+                      
+                      // Start Button
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                        child: GestureDetector(
+                          onTap: _startScanning,
+                          child: Container(
+                            width: double.infinity,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Colors.cyanAccent, Colors.indigoAccent],
+                              ),
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.cyanAccent.withOpacity(0.4),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Text(
+                                "START SCANNING",
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ],

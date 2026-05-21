@@ -80,8 +80,11 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
           ),
         ],
       ),
-      body: Column(
-        children: [
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            children: [
           // Date Selector Dashboard
           Container(
             margin: const EdgeInsets.all(16.0),
@@ -241,7 +244,9 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                     },
                   ),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

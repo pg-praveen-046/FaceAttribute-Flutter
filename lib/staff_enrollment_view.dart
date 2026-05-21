@@ -73,7 +73,10 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: Form(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,6 +159,8 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
                 ),
               ),
             ],
+          ),
+            ),
           ),
         ),
       ),
