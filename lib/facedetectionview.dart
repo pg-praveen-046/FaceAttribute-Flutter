@@ -64,8 +64,10 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
   String _currentPunchType = "IN";
   String _currentPunchRemark = "";
   String _currentPunchTime = "";
-  int _outRequestTimer = 30;
+  int _outRequestTimer = 10;
   Timer? _countdownTimer;
+  Timer? _welcomeTimer;
+  int _welcomeCountdown = 5;
 
   @override
   void initState() {
@@ -87,6 +89,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
   @override
   void dispose() {
     _scannerController.dispose();
+    _countdownTimer?.cancel();
+    _welcomeTimer?.cancel();
     super.dispose();
   }
 
@@ -255,6 +259,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                 _showSuccessAnimation = false;
                 _showWelcomeCard = true;
               });
+              _startWelcomeTimer();
             }
           });
         } else {
@@ -281,6 +286,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                   _showSuccessAnimation = false;
                   _showWelcomeCard = true;
                 });
+                _startWelcomeTimer();
               }
             });
           } else {
@@ -327,22 +333,25 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
   }
 
   void startOutRequestTimer() {
-    _outRequestTimer = 30;
+    _outRequestTimer = 10;
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
+      bool isExpired = false;
       setState(() {
         if (_outRequestTimer > 0) {
           _outRequestTimer--;
         } else {
-          _showOutRequest = false;
-          _recognized = false;
+          isExpired = true;
           timer.cancel();
         }
       });
+      if (isExpired) {
+        selectOutPurpose("Others");
+      }
     });
   }
 
@@ -366,7 +375,49 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
           _showSuccessAnimation = false;
           _showWelcomeCard = true;
         });
+        _startWelcomeTimer();
       }
+    });
+  }
+
+  void _confirmAndContinue() {
+    _welcomeTimer?.cancel();
+    faceDetectionViewController?.stopCamera();
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => ScannerIntroView(
+          personList: widget.personList,
+          logAttendance: widget.logAttendance,
+          getLastPunchToday: widget.getLastPunchToday,
+          insertPerson: widget.insertPerson,
+          role: widget.role,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _startWelcomeTimer() {
+    _welcomeTimer?.cancel();
+    setState(() {
+      _welcomeCountdown = 5;
+    });
+    _welcomeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_welcomeCountdown > 1) {
+          _welcomeCountdown--;
+        } else {
+          timer.cancel();
+          _confirmAndContinue();
+        }
+      });
     });
   }
 
@@ -1141,24 +1192,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                                 width: double.infinity,
                                 height: 54,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    faceDetectionViewController?.stopCamera();
-                                    Navigator.pushReplacement(
-                                      context,
-                                      PageRouteBuilder(
-                                        pageBuilder: (context, animation, secondaryAnimation) => ScannerIntroView(
-                                          personList: widget.personList,
-                                          logAttendance: widget.logAttendance,
-                                          getLastPunchToday: widget.getLastPunchToday,
-                                          insertPerson: widget.insertPerson,
-                                          role: widget.role,
-                                        ),
-                                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                          return FadeTransition(opacity: animation, child: child);
-                                        },
-                                      ),
-                                    );
-                                  },
+                                  onPressed: _confirmAndContinue,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF2962FF),
                                     foregroundColor: Colors.white,
@@ -1167,8 +1201,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView>
                                             BorderRadius.circular(12)),
                                     elevation: 0,
                                   ),
-                                  child: const Text("Confirm & Continue",
-                                      style: TextStyle(
+                                  child: Text("Confirm & Continue (${_welcomeCountdown}s)",
+                                      style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold)),
                                 ),

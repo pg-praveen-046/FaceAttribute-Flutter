@@ -3,6 +3,7 @@
 import 'package:facerecognition_flutter/EmployeeListView.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui';
 import 'dart:async';
 import 'dart:math';
 import 'package:facesdk_plugin/facesdk_plugin.dart';
@@ -25,8 +26,13 @@ import 'scanner_intro_view.dart';
 
 import 'splash_view.dart';
 
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final isDarkMode = prefs.getBool("is_dark_mode") ?? true;
+  themeNotifier.value = isDarkMode ? ThemeMode.dark : ThemeMode.light;
   runApp(const MyApp());
 }
 
@@ -35,51 +41,95 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        title: 'Face Recognition',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          primaryColor: Colors.indigoAccent,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.indigoAccent,
-            brightness: Brightness.dark,
-            primary: Colors.indigoAccent,
-            secondary: Colors.cyanAccent,
-            surface: const Color(0xFF0F0F0F),
-          ),
-          scaffoldBackgroundColor: const Color(0xFF0F0F0F),
-          cardTheme: CardTheme(
-            color: const Color(0xFF1A1A1A),
-            elevation: 4,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            margin: const EdgeInsets.symmetric(vertical: 8),
-          ),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            titleTextStyle: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, currentMode, _) {
+        return MaterialApp(
+          title: 'Face Recognition',
+          debugShowCheckedModeBanner: false,
+          themeMode: currentMode,
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.light,
+            primaryColor: Colors.indigo,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.indigo,
+              brightness: Brightness.light,
+              primary: Colors.indigo,
+              secondary: Colors.cyan,
+              surface: const Color(0xFFF8F9FA),
+            ),
+            scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+            cardTheme: CardTheme(
               color: Colors.white,
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: const EdgeInsets.symmetric(vertical: 8),
+            ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              centerTitle: true,
+              titleTextStyle: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+                color: Colors.black87,
+              ),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                elevation: 2,
+              ),
             ),
           ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.indigoAccent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              padding: const EdgeInsets.symmetric(vertical: 16),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            primaryColor: Colors.indigoAccent,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.indigoAccent,
+              brightness: Brightness.dark,
+              primary: Colors.indigoAccent,
+              secondary: Colors.cyanAccent,
+              surface: const Color(0xFF0F0F0F),
+            ),
+            scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+            cardTheme: CardTheme(
+              color: const Color(0xFF1A1A1A),
               elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: const EdgeInsets.symmetric(vertical: 8),
+            ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              centerTitle: true,
+              titleTextStyle: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+                color: Colors.white,
+              ),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigoAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                elevation: 4,
+              ),
             ),
           ),
-        ),
-        home: const SplashView());
+          home: const SplashView(),
+        );
+      },
+    );
   }
 }
 
@@ -603,7 +653,7 @@ class MyHomePageState extends State<MyHomePage> {
         // For user role, intercept back and show logout confirmation
         if (widget.role == 'user') {
           await _confirmLogout();
-          return false; 
+          return false;
         }
         SystemNavigator.pop();
         return false;
@@ -612,25 +662,68 @@ class MyHomePageState extends State<MyHomePage> {
         appBar: AppBar(
           automaticallyImplyLeading: false,
           leading: null,
-          // ── Logout button visible for ALL roles ──
           actions: [
+            // Theme toggle button
+            ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeNotifier,
+              builder: (context, mode, _) {
+                final isDark = mode == ThemeMode.dark;
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: isDark ? Colors.white10 : Colors.black12, width: 1),
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                      color: isDark ? Colors.yellowAccent : Colors.grey.shade700,
+                      size: 20,
+                    ),
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      if (themeNotifier.value == ThemeMode.dark) {
+                        themeNotifier.value = ThemeMode.light;
+                        await prefs.setBool("is_dark_mode", false);
+                      } else {
+                        themeNotifier.value = ThemeMode.dark;
+                        await prefs.setBool("is_dark_mode", true);
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(right: 16, top: 12, bottom: 12),
               child: _LogoutButton(onTap: _confirmLogout),
             ),
           ],
           title: const Text(
             'Dashboard',
             style: TextStyle(
-              letterSpacing: 1,
+              letterSpacing: 1.5,
               fontWeight: FontWeight.w900,
-              fontSize: 20,
+              fontSize: 22,
             ),
           ),
-          
           toolbarHeight: 70,
-          backgroundColor: Colors.transparent,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.85),
           elevation: 0,
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          shape: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor.withOpacity(0.08),
+              width: 1,
+            ),
+          ),
         ),
         extendBodyBehindAppBar: true,
         body: Container(

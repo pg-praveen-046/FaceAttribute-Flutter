@@ -53,7 +53,7 @@ class _PersonViewState extends State<PersonView> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
                 ),
                 child: Row(
                   children: [
@@ -61,7 +61,7 @@ class _PersonViewState extends State<PersonView> {
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.blue.withOpacity(0.3), width: 2),
+                        border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3), width: 2),
                       ),
                       child: CircleAvatar(
                         radius: 28,
@@ -98,6 +98,9 @@ class _PersonViewState extends State<PersonView> {
   }
 
   void _showPersonDetails(BuildContext context, Person person) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -105,9 +108,9 @@ class _PersonViewState extends State<PersonView> {
         child: Container(
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
+            color: theme.cardTheme.color ?? theme.cardColor,
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: Colors.white10),
+            border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -116,7 +119,7 @@ class _PersonViewState extends State<PersonView> {
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.indigoAccent, width: 3),
+                  border: Border.all(color: theme.primaryColor, width: 3),
                 ),
                 child: CircleAvatar(
                   radius: 70,
@@ -126,36 +129,36 @@ class _PersonViewState extends State<PersonView> {
               const SizedBox(height: 24),
               Text(
                 person.name,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.indigoAccent.withOpacity(0.1),
+                  color: theme.primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   person.designation.isNotEmpty ? person.designation.toUpperCase() : 'STAFF MEMBER',
-                  style: const TextStyle(fontSize: 12, color: Colors.indigoAccent, fontWeight: FontWeight.w900, letterSpacing: 1),
+                  style: TextStyle(fontSize: 12, color: theme.primaryColor, fontWeight: FontWeight.w900, letterSpacing: 1),
                 ),
               ),
               const SizedBox(height: 32),
-              const Divider(color: Colors.white10, height: 1),
+              Divider(color: isDark ? Colors.white10 : Colors.black12, height: 1),
               const SizedBox(height: 24),
-              _buildInfoRow(Icons.email_outlined, 'Email', person.email.isNotEmpty ? person.email : 'N/A'),
-              _buildInfoRow(Icons.phone_outlined, 'Contact', person.contact.isNotEmpty ? person.contact : 'N/A'),
-              _buildInfoRow(Icons.access_time, 'Shift Time', '${person.inTime} - ${person.outTime}'),
-              _buildInfoRow(Icons.location_on_outlined, 'Location', 'IDL'),
+              _buildInfoRow(context, Icons.email_outlined, 'Email', person.email.isNotEmpty ? person.email : 'N/A'),
+              _buildInfoRow(context, Icons.phone_outlined, 'Contact', person.contact.isNotEmpty ? person.contact : 'N/A'),
+              _buildInfoRow(context, Icons.access_time, 'Shift Time', '${person.inTime} - ${person.outTime}'),
+              _buildInfoRow(context, Icons.location_on_outlined, 'Location', 'IDL'),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(ctx),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.05),
-                    foregroundColor: Colors.white70,
+                    backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                    foregroundColor: isDark ? Colors.white70 : Colors.black87,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
@@ -169,18 +172,19 @@ class _PersonViewState extends State<PersonView> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(BuildContext context, IconData icon, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.white54),
+          Icon(icon, size: 20, color: isDark ? Colors.white54 : Colors.black54),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Colors.white38)),
-              Text(value, style: const TextStyle(fontSize: 14, color: Colors.white70)),
+              Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black45)),
+              Text(value, style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black87)),
             ],
           ),
         ],

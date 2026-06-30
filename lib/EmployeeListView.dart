@@ -234,10 +234,10 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                         _searchQuery.isEmpty
                             ? 'All Employees'
                             : 'Search Results',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white70,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -307,6 +307,11 @@ class _EmployeeListViewState extends State<EmployeeListView> {
     ];
     final avatarColor = colors[name.codeUnitAt(0) % colors.length];
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final secondaryColor = isDark ? Colors.white70 : Colors.black87;
+    final tertiaryColor = isDark ? Colors.white38 : Colors.black54;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -344,10 +349,10 @@ class _EmployeeListViewState extends State<EmployeeListView> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 if (designation.isNotEmpty) ...[
@@ -355,12 +360,12 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                   Row(
                     children: [
                       Icon(Icons.work_outline_rounded,
-                          size: 13, color: Colors.white54),
+                          size: 13, color: secondaryColor.withOpacity(0.6)),
                       const SizedBox(width: 4),
                       Text(
                         designation,
-                        style: const TextStyle(
-                            fontSize: 13, color: Colors.white54),
+                        style: TextStyle(
+                            fontSize: 13, color: secondaryColor.withOpacity(0.6)),
                       ),
                     ],
                   ),
@@ -370,13 +375,13 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                   Row(
                     children: [
                       Icon(Icons.email_outlined,
-                          size: 13, color: Colors.white38),
+                          size: 13, color: tertiaryColor),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           email,
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.white38),
+                          style: TextStyle(
+                              fontSize: 12, color: tertiaryColor),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -388,12 +393,12 @@ class _EmployeeListViewState extends State<EmployeeListView> {
                   Row(
                     children: [
                       Icon(Icons.phone_outlined,
-                          size: 13, color: Colors.white38),
+                          size: 13, color: tertiaryColor),
                       const SizedBox(width: 4),
                       Text(
                         contact,
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.white38),
+                        style: TextStyle(
+                            fontSize: 12, color: tertiaryColor),
                       ),
                     ],
                   ),

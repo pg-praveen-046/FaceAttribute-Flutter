@@ -29,18 +29,28 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
   TimeOfDay _outTime = const TimeOfDay(hour: 18, minute: 0);
 
   Future<void> _selectTime(BuildContext context, bool isInTime) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: isInTime ? _inTime : _outTime,
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.dark(
-              primary: Colors.indigoAccent,
-              onPrimary: Colors.white,
-              surface: const Color(0xFF1E1E1E),
-              onSurface: Colors.white,
-            ),
+          data: theme.copyWith(
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: Colors.indigoAccent,
+                    onPrimary: Colors.white,
+                    surface: Color(0xFF1E1E1E),
+                    onSurface: Colors.white,
+                  )
+                : const ColorScheme.light(
+                    primary: Colors.indigo,
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Colors.black87,
+                  ),
           ),
           child: child!,
         );
@@ -65,8 +75,10 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Staff Enrollment'),
         centerTitle: true,
@@ -168,6 +180,7 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
   }
 
   Widget _buildSectionHeader(String title) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16, top: 8),
       child: Text(
@@ -176,7 +189,7 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
           fontSize: 12,
           fontWeight: FontWeight.w900,
           letterSpacing: 1.5,
-          color: Colors.white.withOpacity(0.4),
+          color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4),
         ),
       ),
     );
@@ -185,18 +198,19 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
   Widget _buildTextField(
       TextEditingController controller, String label, IconData icon,
       {TextInputType? keyboardType, String? Function(String?)? validator}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         validator: validator,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: Colors.indigoAccent.withOpacity(0.7)),
           filled: true,
-          fillColor: Colors.white.withOpacity(0.05),
+          fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -207,13 +221,14 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
   }
 
   Widget _buildTimeTile(String label, TimeOfDay time, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -221,7 +236,7 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
           children: [
             Text(label,
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                    color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4), fontSize: 12)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -230,8 +245,8 @@ class _StaffEnrollmentViewState extends State<StaffEnrollmentView> {
                 const SizedBox(width: 8),
                 Text(
                   _formatTimeOfDay(time),
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
                 ),
               ],
             ),

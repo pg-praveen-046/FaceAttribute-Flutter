@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'facedetectionview.dart';
 import 'person.dart';
+import 'login_view.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:facerecognition_flutter/main.dart';
 
 class ScannerIntroView extends StatefulWidget {
   final List<Person> personList;
@@ -70,16 +73,178 @@ class _ScannerIntroViewState extends State<ScannerIntroView>
     );
   }
 
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  "Confirm Logout",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Are you sure you want to log out and end this session?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.6),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text("Cancel", style: TextStyle(color: Colors.white54, fontSize: 16)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginView()),
+                            (route) => false,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text("Logout", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Background Glow
           Positioned.fill(
             child: CustomPaint(
-              painter: _BackgroundGlowPainter(),
+              painter: _BackgroundGlowPainter(brightness: theme.brightness),
+            ),
+          ),
+
+          // Back Button for Admin
+          if (widget.role != 'user')
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 10,
+              left: 16,
+              child: IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                  ),
+                  child: Icon(Icons.arrow_back_ios_new, color: isDark ? Colors.white : Colors.black87, size: 18),
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+
+          // Theme Toggle Button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            right: 130,
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                ),
+                child: ValueListenableBuilder<ThemeMode>(
+                  valueListenable: themeNotifier,
+                  builder: (_, mode, __) {
+                    return Icon(
+                      mode == ThemeMode.dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                      color: mode == ThemeMode.dark ? Colors.yellowAccent : Colors.grey,
+                      size: 20,
+                    );
+                  },
+                ),
+              ),
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                if (themeNotifier.value == ThemeMode.dark) {
+                  themeNotifier.value = ThemeMode.light;
+                  await prefs.setBool("is_dark_mode", false);
+                } else {
+                  themeNotifier.value = ThemeMode.dark;
+                  await prefs.setBool("is_dark_mode", true);
+                }
+              },
+            ),
+          ),
+
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            right: 16,
+            child: ElevatedButton.icon(
+              onPressed: _showLogoutDialog,
+              icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
+              label: const Text(
+                "Logout",
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent.withOpacity(0.15),
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(color: Colors.redAccent.withOpacity(0.5), width: 1.5),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              ),
             ),
           ),
 
@@ -104,6 +269,7 @@ class _ScannerIntroViewState extends State<ScannerIntroView>
                               return CustomPaint(
                                 painter: _ScannerAnimationPainter(
                                   progress: _controller.value,
+                                  brightness: theme.brightness,
                                 ),
                               );
                             },
@@ -114,10 +280,10 @@ class _ScannerIntroViewState extends State<ScannerIntroView>
                       const SizedBox(height: 50),
                       
                       // Text Description
-                      const Text(
+                      Text(
                         "Face Scanner",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: isDark ? Colors.white : Colors.black87,
                           fontSize: 32,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 2,
@@ -130,7 +296,7 @@ class _ScannerIntroViewState extends State<ScannerIntroView>
                           "Securely log your attendance by verifying your identity with the advanced facial recognition system.",
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
+                            color: isDark ? Colors.white.withOpacity(0.6) : Colors.black87.withOpacity(0.6),
                             fontSize: 16,
                             height: 1.5,
                           ),
@@ -187,10 +353,13 @@ class _ScannerIntroViewState extends State<ScannerIntroView>
 }
 
 class _BackgroundGlowPainter extends CustomPainter {
+  final Brightness brightness;
+  _BackgroundGlowPainter({required this.brightness});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.cyanAccent.withOpacity(0.05)
+      ..color = (brightness == Brightness.dark ? Colors.cyanAccent : Colors.cyan).withOpacity(0.05)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 100);
 
     canvas.drawCircle(
@@ -206,8 +375,9 @@ class _BackgroundGlowPainter extends CustomPainter {
 
 class _ScannerAnimationPainter extends CustomPainter {
   final double progress;
+  final Brightness brightness;
 
-  _ScannerAnimationPainter({required this.progress});
+  _ScannerAnimationPainter({required this.progress, required this.brightness});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -216,20 +386,20 @@ class _ScannerAnimationPainter extends CustomPainter {
 
     // Draw outer rings
     final ringPaint = Paint()
-      ..color = Colors.indigoAccent.withOpacity(0.2)
+      ..color = (brightness == Brightness.dark ? Colors.indigoAccent : Colors.indigo).withOpacity(0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
       
     canvas.drawCircle(center, radius, ringPaint);
-    canvas.drawCircle(center, radius * 0.8, ringPaint..color = Colors.cyanAccent.withOpacity(0.1));
+    canvas.drawCircle(center, radius * 0.8, ringPaint..color = (brightness == Brightness.dark ? Colors.cyanAccent : Colors.cyan).withOpacity(0.1));
 
     // Draw scanning arc
     final arcPaint = Paint()
       ..shader = SweepGradient(
         colors: [
-          Colors.cyanAccent.withOpacity(0.0),
-          Colors.cyanAccent,
-          Colors.cyanAccent.withOpacity(0.0),
+          (brightness == Brightness.dark ? Colors.cyanAccent : Colors.cyan).withOpacity(0.0),
+          brightness == Brightness.dark ? Colors.cyanAccent : Colors.cyan,
+          (brightness == Brightness.dark ? Colors.cyanAccent : Colors.cyan).withOpacity(0.0),
         ],
         stops: const [0.0, 0.5, 1.0],
         transform: GradientRotation(progress * 2 * math.pi),
@@ -248,7 +418,7 @@ class _ScannerAnimationPainter extends CustomPainter {
     
     // Draw center face outline (simplified)
     final facePaint = Paint()
-      ..color = Colors.white.withOpacity(0.8)
+      ..color = (brightness == Brightness.dark ? Colors.white : Colors.black).withOpacity(0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
       
@@ -263,7 +433,7 @@ class _ScannerAnimationPainter extends CustomPainter {
     
     // Face nodes
     final nodePaint = Paint()
-      ..color = Colors.cyanAccent
+      ..color = brightness == Brightness.dark ? Colors.cyanAccent : Colors.cyan
       ..style = PaintingStyle.fill;
       
     canvas.drawCircle(Offset(center.dx - radius * 0.15, center.dy - radius * 0.05), 3, nodePaint);
@@ -273,6 +443,6 @@ class _ScannerAnimationPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ScannerAnimationPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+    return oldDelegate.progress != progress || oldDelegate.brightness != brightness;
   }
 }

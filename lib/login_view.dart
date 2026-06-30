@@ -80,15 +80,14 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Background Gradient & Shapes
-          Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF0F0F0F),
-            ),
-          ),
           Positioned(
             top: -100,
             right: -100,
@@ -97,7 +96,7 @@ class _LoginViewState extends State<LoginView> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.indigoAccent.withOpacity(0.15),
+                color: theme.primaryColor.withOpacity(0.15),
               ),
             ),
           ),
@@ -109,7 +108,7 @@ class _LoginViewState extends State<LoginView> {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.cyanAccent.withOpacity(0.1),
+                color: theme.colorScheme.secondary.withOpacity(0.1),
               ),
             ),
           ),
@@ -140,30 +139,30 @@ class _LoginViewState extends State<LoginView> {
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.03),
+                          color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
+                            color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
                             width: 1.5,
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.face_unlock_rounded,
                           size: 64,
-                          color: Colors.indigoAccent,
+                          color: theme.primaryColor,
                         ),
                       ),
                     ),
                     const SizedBox(height: 32),
 
                     // Welcome Text
-                    const Text(
+                    Text(
                       'Access Portal',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5,
-                        color: Colors.white,
+                        color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -171,7 +170,7 @@ class _LoginViewState extends State<LoginView> {
                       'Sign in to your account',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.white.withOpacity(0.5),
+                        color: isDark ? Colors.white.withOpacity(0.5) : Colors.black.withOpacity(0.5),
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -183,22 +182,24 @@ class _LoginViewState extends State<LoginView> {
                       child: Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E), // Solid color instead of blur
+                          color: theme.cardTheme.color ?? theme.cardColor,
                           borderRadius: BorderRadius.circular(28),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
+                            color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
                             width: 1.5,
                           ),
                         ),
                         child: Column(
                           children: [
                             _buildTextField(
+                              context: context,
                               controller: _usernameController,
                               hint: 'Username',
                               icon: Icons.person_outline_rounded,
                             ),
                             const SizedBox(height: 20),
                             _buildTextField(
+                              context: context,
                               controller: _passwordController,
                               hint: 'Password',
                               icon: Icons.lock_outline_rounded,
@@ -216,7 +217,7 @@ class _LoginViewState extends State<LoginView> {
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _handleLogin,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.indigoAccent,
+                                  backgroundColor: theme.primaryColor,
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
@@ -254,7 +255,7 @@ class _LoginViewState extends State<LoginView> {
                       child: Text(
                         'Forgot your credentials?',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
+                          color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4),
                           fontSize: 14,
                         ),
                       ),
@@ -271,6 +272,7 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _buildTextField({
+    required BuildContext context,
     required TextEditingController controller,
     required String hint,
     required IconData icon,
@@ -278,29 +280,32 @@ class _LoginViewState extends State<LoginView> {
     bool isVisible = false,
     VoidCallback? onToggleVisibility,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
           ),
           child: TextField(
             controller: controller,
             obscureText: isPassword && !isVisible,
-            style: const TextStyle(color: Colors.white, fontSize: 16),
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 16),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-              prefixIcon: Icon(icon, color: Colors.indigoAccent, size: 22),
+              hintStyle: TextStyle(color: isDark ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.3)),
+              prefixIcon: Icon(icon, color: theme.primaryColor, size: 22),
               suffixIcon: isPassword
                   ? IconButton(
                       icon: Icon(
                         isVisible
                             ? Icons.visibility_off_rounded
                             : Icons.visibility_rounded,
-                        color: Colors.white.withOpacity(0.3),
+                        color: isDark ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.3),
                         size: 20,
                       ),
                       onPressed: onToggleVisibility,

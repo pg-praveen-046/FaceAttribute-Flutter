@@ -172,8 +172,10 @@ class SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('System Settings'),
         backgroundColor: Colors.transparent,
@@ -270,18 +272,21 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildSettingsCard(List<Widget> children) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: theme.cardTheme.color ?? theme.cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
       ),
       child: Column(children: children),
     );
   }
 
   Widget _buildSwitchTile(String title, String subtitle, IconData icon, bool value, Function(bool) onChanged) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       leading: Container(
@@ -290,7 +295,7 @@ class SettingsPageState extends State<SettingsPage> {
         child: Icon(icon, color: Colors.blueAccent),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4))),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.5))),
       trailing: CupertinoSwitch(
         value: value,
         activeColor: Colors.indigoAccent,
@@ -300,6 +305,7 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildNavigationTile(String title, String value, IconData icon, Color color, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -312,15 +318,16 @@ class SettingsPageState extends State<SettingsPage> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14)),
+          Text(value, style: TextStyle(color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.5), fontSize: 14)),
           const SizedBox(width: 8),
-          Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white.withOpacity(0.2)),
+          Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.25)),
         ],
       ),
     );
   }
 
   void _showLivenessPicker() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     _showDialog(
       CupertinoPicker(
         magnification: 1.22,
@@ -333,13 +340,15 @@ class SettingsPageState extends State<SettingsPage> {
           updateLivenessLevel(selectedItem);
         },
         children: List<Widget>.generate(_livenessLevelNames.length, (int index) {
-          return Center(child: Text(_livenessLevelNames[index], style: const TextStyle(color: Colors.white)));
+          return Center(child: Text(_livenessLevelNames[index], style: TextStyle(color: isDark ? Colors.white : Colors.black87)));
         }),
       ),
     );
   }
 
   void _showThresholdDialog(String title, TextEditingController controller, VoidCallback onSave) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -347,9 +356,9 @@ class SettingsPageState extends State<SettingsPage> {
         child: Container(
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
+            color: theme.cardTheme.color ?? theme.cardColor,
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: Colors.white10),
+            border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -357,26 +366,26 @@ class SettingsPageState extends State<SettingsPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.indigoAccent.withOpacity(0.1),
+                  color: theme.primaryColor.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.tune_rounded, color: Colors.indigoAccent, size: 32),
+                child: Icon(Icons.tune_rounded, color: theme.primaryColor, size: 32),
               ),
               const SizedBox(height: 20),
               Text(
                 title,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
               ),
               const SizedBox(height: 24),
               TextField(
                 controller: controller,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                 decoration: InputDecoration(
                   hintText: 'Enter value (0.0 - 1.0)',
-                  hintStyle: const TextStyle(color: Colors.white24),
+                  hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.black38),
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
+                  fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                 ),
               ),
@@ -386,7 +395,7 @@ class SettingsPageState extends State<SettingsPage> {
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+                      child: Text('Cancel', style: TextStyle(color: isDark ? Colors.white38 : Colors.black54)),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -394,7 +403,7 @@ class SettingsPageState extends State<SettingsPage> {
                     child: ElevatedButton(
                       onPressed: onSave,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigoAccent,
+                        backgroundColor: theme.primaryColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
